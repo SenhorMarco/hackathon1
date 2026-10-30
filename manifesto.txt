@@ -1,0 +1,15 @@
+Intuitos
+
+Professor
+-Economia de tempo
+-Reduçao de esforço necessario
+-Flexibilidade de correcao
+
+Aluno
+-Rapidez no feedback
+-Personalização
+-Clareza
+
+Problema: Professores despendem muito tempo e esforço com correção, que muitas vezes é repetitiva e manual. Professores muitas vezes corrigem provas de forma enviesada, descartando soluções que diferem da solução proposta. Alunos demoram para ter o feedback de seus exercícios, afetando sua capacidade de aprender com a correção dos erros. Alunos perpetuam erros que muitas vezes passam despercebidos, devido a falta de acompanhamento contínuo. 
+
+  

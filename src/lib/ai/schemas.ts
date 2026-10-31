@@ -1,9 +1,9 @@
 /**
  * Contratos (formato JSON) de cada etapa da IA.
  *
- * Cada schema é passado ao Claude via structured outputs (`zodOutputFormat`),
- * então a resposta sempre chega validada neste formato. O front e o banco
- * usam os tipos inferidos daqui — mudou um campo, muda só neste arquivo.
+ * Cada schema vai no prompt como JSON Schema e a resposta da IA é validada
+ * contra ele (ver json.ts). O front e o banco usam os tipos inferidos
+ * daqui — mudou um campo, muda só neste arquivo.
  *
  * Fluxo: análise prévia → barema → correção por aluno → agrupamento → feedback.
  */

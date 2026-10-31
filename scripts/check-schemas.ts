@@ -1,6 +1,6 @@
-// Confere se cada contrato da IA vira um output format válido.
+// Confere se cada contrato da IA vira um JSON Schema válido para o prompt.
 // Uso: npx tsx scripts/check-schemas.ts
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { z } from "zod";
 import * as S from "../src/lib/ai/schemas";
 
 const contratos = {
@@ -12,6 +12,6 @@ const contratos = {
 };
 
 for (const [nome, schema] of Object.entries(contratos)) {
-  const formato = zodOutputFormat(schema) as unknown as { type: string; schema: object };
-  console.log(`${nome}: ${formato.type}, ${JSON.stringify(formato.schema).length} caracteres de schema`);
+  const jsonSchema = JSON.stringify(z.toJSONSchema(schema));
+  console.log(`${nome}: ${jsonSchema.length} caracteres de JSON Schema`);
 }

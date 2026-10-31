@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 import { z } from 'zod';
 import { logFalhaIA, motivoFalhaIA } from '@/lib/ai/erros';
+import { normalizarNumeracao } from '@/lib/ai/normalizar';
 import { AnaliseProva, Barema } from '@/lib/ai/schemas';
 import { gerarJson } from '@/lib/ai/json';
 import { ia, MODELO } from '@/lib/ai/client';
@@ -35,8 +36,18 @@ export async function POST(_request: Request, context: { params: Promise<{ examI
         await new Promise(resolve => setTimeout(resolve, 10_000));
         result = await pedido();
       }
+      if (!result.analise.questoes.length) {
+        console.error('Análise sem questões:', result.analise.observacoesGerais.slice(0, 300));
+        return apiError(`A IA não encontrou questões neste documento. ${result.analise.observacoesGerais} Envie uma imagem mais nítida ou um PDF com o texto legível e tente novamente.`, 422);
+      }
+      const normalizada = normalizarNumeracao(result.analise, result.barema);
+      if (normalizada.renumerada) console.error('Numeração da análise corrigida:', result.analise.questoes.map(q => q.numero).join(','));
+      result = { analise: normalizada.analise, barema: normalizada.barema };
       const invalid = validateExam(result.analise, result.barema);
-      if (invalid) return apiError(`A análise precisa ser refeita: ${invalid}`, 422);
+      if (invalid) {
+        console.error('Análise inválida:', invalid, 'questões', result.analise.questoes.map(q => q.numero).join(','), 'barema', result.barema.questoes.map(q => q.numero).join(','));
+        return apiError(`A análise precisa ser refeita: ${invalid} Clique em Analisar prova de novo.`, 422);
+      }
     } catch (error) {
       logFalhaIA('análise de prova', error);
       return apiError(`Não foi possível analisar o documento: ${motivoFalhaIA(error)} O arquivo foi preservado.`, 502);

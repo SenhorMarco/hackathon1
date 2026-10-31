@@ -31,6 +31,7 @@ export interface Aluno {
 }
 
 export interface Prova {
+  revisao?: string;
   id: string;
   turma_id: string | null;
   titulo: string;

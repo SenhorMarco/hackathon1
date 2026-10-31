@@ -1,3 +1,4 @@
+import { readUpload } from '@/lib/uploads/direct';
 import { db, BUCKET_PROVAS } from '@/lib/db/server';
 import { apiError, findProva, privateHeaders, serverError, uuid } from '@/lib/db/api';
 import { findSubmission } from '@/lib/db/submissions';
@@ -16,10 +17,11 @@ export async function GET(_request: Request, context: { params: Promise<{ examId
 export async function POST(request: Request, context: { params: Promise<{ examId: string }> }) {
   const { examId } = await context.params;
   if (!uuid.safeParse(examId).success) return apiError('Prova inválida.', 400);
-  if (!request.headers.get('content-type')?.startsWith('multipart/form-data')) return apiError('Envie multipart/form-data.', 415);
+  if (!/^(multipart\/form-data|application\/json)/.test(request.headers.get('content-type') || '')) return apiError('Envie multipart/form-data.', 415);
   if (Number(request.headers.get('content-length')) > MAX_TOTAL + 1024 * 1024) return apiError('O conjunto deve ter até 40 MB.', 413);
-  const form = await request.formData().catch(() => null);
-  if (!form) return apiError('Formulário inválido.', 400);
+  const received = await readUpload(request, 'submission', examId).catch(() => null);
+  if (!received) return apiError('Formulário inválido.', 400);
+  const { form, prepared } = received;
   const id = form.get('id');
   const files = form.getAll('arquivos');
   if (!uuid.safeParse(id).success || !files.length || files.length > 10 || !files.every(f => f instanceof File)) return apiError('Envie um PDF ou até dez imagens e um identificador válido.', 400);
@@ -37,7 +39,11 @@ export async function POST(request: Request, context: { params: Promise<{ examId
     const prova = await findProva(examId);
     if (!prova?.turma_id) return apiError('Prova ou turma não encontrada.', 404);
     const existing = await findSubmission(examId, id as string);
-    if (existing) return Response.json({ submissao: existing }, { headers: privateHeaders });
+    if (existing) {
+      const unused = prepared?.files.map(f => f.path).filter(path => !existing.arquivo_paths.includes(path)) || [];
+      if (unused.length) await db().storage.from(BUCKET_PROVAS).remove(unused);
+      return Response.json({ submissao: existing }, { headers: privateHeaders });
+    }
     const paths: string[] = [];
     const bucket = db().storage.from(BUCKET_PROVAS);
     // Diretório de tentativa separado: uma repetição concorrente não remove arquivos já confirmados.
@@ -45,9 +51,11 @@ export async function POST(request: Request, context: { params: Promise<{ examId
     try {
       for (const [i, file] of files.entries()) {
         const ext = mimes[i] === 'application/pdf' ? 'pdf' : mimes[i] === 'image/png' ? 'png' : 'jpg';
-        const path = `${examId}/submissoes/${id}/${attempt}/${i + 1}.${ext}`;
-        const { error } = await bucket.upload(path, file, { contentType: mimes[i], upsert: false });
-        if (error) throw error;
+        const path = prepared?.files[i].path || `${examId}/submissoes/${id}/${attempt}/${i + 1}.${ext}`;
+        if (!prepared) {
+          const { error } = await bucket.upload(path, file, { contentType: mimes[i], upsert: false });
+          if (error) throw error;
+        }
         paths.push(path);
       }
       const { data, error } = await db().from('submissoes').insert({ id, prova_id: examId, aluno_id: null, arquivo_paths: paths, arquivo_nomes: files.map(f => f.name), status: 'enviada' }).select('*').single();

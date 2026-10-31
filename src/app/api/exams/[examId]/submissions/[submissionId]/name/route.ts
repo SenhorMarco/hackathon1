@@ -5,6 +5,7 @@ import { findSubmission } from '@/lib/db/submissions';
 import { ia, MODELO } from '@/lib/ai/client';
 import { gerarJson } from '@/lib/ai/json';
 import { headerImage } from '@/lib/uploads/header';
+export const maxDuration = 120;
 export async function POST(_request: Request, context: { params: Promise<{ examId: string; submissionId: string }> }) {
   const { examId, submissionId } = await context.params;
   if (![examId, submissionId].every(id => uuid.safeParse(id).success)) return apiError('Submissão inválida.', 400);

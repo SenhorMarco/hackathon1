@@ -1,8 +1,9 @@
+import type { AnaliseProva } from './ai/schemas';
 export type Criterion = {id:string; text:string; points:number};
-export type Question = {id:string; topic:string; text:string; difficulty:'Fácil'|'Média'|'Difícil'; answer:string; criteria:Criterion[]; alternative?:boolean; alternativeText?:string};
+export type Question = {number?:number; id:string; topic:string; text:string; difficulty:'Fácil'|'Média'|'Difícil'; answer:string; criteria:Criterion[]; alternative?:boolean; alternativeText?:string};
 export type Student = {id:string; name:string; email:string};
 export type Response = {file:string; score:number|null; feedback:string; approved:boolean; alternative:boolean; adjustment?:string};
-export type Exam = {persisted?:boolean; id:string; title:string; date:string; status:'Rascunho'|'Aguardando respostas'|'Em correção'|'Concluída'; file:string; rubricFile?:string; questions:Question[]; responses:Record<string,Response>; released:boolean};
+export type Exam = {revision?:string; analysis?:AnaliseProva; dirty?:boolean; persisted?:boolean; id:string; title:string; date:string; status:'Rascunho'|'Aguardando respostas'|'Em correção'|'Concluída'; file:string; rubricFile?:string; questions:Question[]; responses:Record<string,Response>; released:boolean};
 export type ClassRoom = {databaseId?:string; id:string; name:string; subject:string; period:string; color:string; students:Student[]; exams:Exam[]};
 export const questions=():Question[]=>[
 {id:'q1',topic:'Movimento uniforme',text:'Um móvel percorre 120 m em 10 s, com velocidade constante. Determine sua velocidade.',difficulty:'Fácil',answer:'v = Δs / Δt = 120 / 10 = 12 m/s.',criteria:[{id:'a',text:'Identifica os dados e a relação v = Δs/Δt',points:1},{id:'b',text:'Calcula e apresenta a unidade correta',points:1}]},

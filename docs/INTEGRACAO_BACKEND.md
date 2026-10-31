@@ -32,6 +32,16 @@ A interface envia um conjunto por requisição e processa a fila sequencialmente
 
 A leitura pela IA é separada do upload e da confirmação. Não há associação por aproximação de nomes nem seleção automática de aluno. Falhas de leitura geram aviso persistido e não bloqueiam associação manual. Somente a metade superior da primeira página é enviada à IA. Nome ausente/ilegível pode retornar `null`. O professor pode abrir cada arquivo e reler o cabeçalho. Execute novamente o SQL para adicionar `alunos.referencia_local`, `submissoes.arquivo_nomes` e `submissoes.nome_leitura_erro`.
 
+## Análise, barema e arquivos no deploy
+
+- `POST /api/uploads`: recebe `{ purpose: "exam" | "submission", examId?, id?, files: [{ name, type, size }] }` e devolve URLs de upload direto e `ticket` assinado. O navegador usa PUT nas URLs e finaliza enviando JSON com `ticket` para a rota de criação da prova ou submissão. O servidor valida os arquivos do ticket, sem aceitar caminhos arbitrários do navegador.
+- `POST /api/exams/:examId/analyze`: lê todas as páginas (até dez) do documento, gera `AnaliseProva` e `Barema`, valida as relações e salva ambos no banco; retorna `{ prova }`. Retentativas preservam análises já salvas e baremas revisados.
+- `PUT /api/exams/:examId/rubric`: recebe `{ analise, barema, revisao }`. Confere questões, soma de pontos e versão. Grava via atualização condicional e retorna `{ prova }`; alterações concorrentes ou provas em correção recebem `409`.
+- Registros de prova retornam `revisao`, um identificador calculado do conteúdo/status salvo. Não há nova coluna ou migração para esse identificador.
+- `GET /api/health`: diagnóstico sem credenciais ou dados de alunos para configuração, schema e bucket privado.
+
+As rotas multipart anteriores são mantidas para compatibilidade. Na Vercel, a interface usa upload direto para não enviar arquivos grandes às funções. Veja no README a configuração obrigatória de Production, os limites de análise e o roteiro de teste no domínio publicado.
+
 ## Pontos exatos a substituir
 
 | Arquivo / função | Comportamento atual | Integração esperada |

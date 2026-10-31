@@ -9,6 +9,7 @@ import { questaoDoCaminho } from '@/lib/aluno/questoes';
 import { imagensComOrigem } from '@/lib/db/files';
 import { db } from '@/lib/db/server';
 import { findSubmission } from '@/lib/db/submissions';
+import { correctionRows } from '@/lib/correction-rows';
 export const maxDuration = 300;
 
 /**
@@ -67,13 +68,10 @@ async function handlePOST(_request: Request, context: { params: Promise<{ examId
       }
     }
 
-    // Só questões que existem no barema viram respostas.
-    const numeros = new Set(prova.barema.questoes.map((q: { numero: number }) => q.numero));
-    const linhas = correcao.questoes.filter(q => numeros.has(q.numero)).map(q => ({
-      submissao_id: submissionId, prova_id: examId, numero: q.numero, correcao: q,
-      grupo_id: null, nota_final: null, comentario_final: null,
-    }));
+    const linhas = correctionRows(correcao, prova.barema, examId, submissionId);
     // Uma nova correção substitui a anterior e desfaz grupos e notas aprovadas.
+    const { error: feedbackError } = await db().from('feedbacks').delete().eq('submissao_id', submissionId);
+    if (feedbackError) throw feedbackError;
     const { error: delError } = await db().from('respostas').delete().eq('submissao_id', submissionId);
     if (delError) throw delError;
     if (linhas.length) {

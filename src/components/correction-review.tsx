@@ -1,23 +1,19 @@
 'use client';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { AnaliseProva, Barema, CorrecaoQuestao } from '@/lib/ai/schemas';
+import type { AnaliseProva, Barema } from '@/lib/ai/schemas';
 import type { Grupo, Resposta, Submissao } from '@/lib/db/types';
+import { csvCell, finalTotal, isValidated, reviewIssues } from '@/lib/review';
+import FeedbackEditor from './feedback-editor';
+import ManualAnswer from './manual-answer';
 
-type SubmissaoResumo = Pick<Submissao, 'id' | 'aluno_id' | 'status' | 'erro' | 'nome_lido' | 'arquivo_paths' | 'arquivo_nomes'>;
-type FeedbackResumo = { submissao_id: string; token: string; publicado: boolean };
-type Revisao = {
+type Submission = Pick<Submissao, 'id' | 'aluno_id' | 'status' | 'erro' | 'nome_lido' | 'arquivo_paths' | 'arquivo_nomes'>;
+type Review = {
   status: string; analise: AnaliseProva | null; barema: Barema | null;
-  submissoes: SubmissaoResumo[]; respostas: Resposta[]; grupos: Grupo[];
-  alunos: { id: string; nome: string }[]; feedbacks: FeedbackResumo[];
+  submissoes: Submission[]; respostas: Resposta[]; grupos: Grupo[];
+  alunos: { id: string; nome: string }[];
+  feedbacks: { submissao_id: string; token: string; publicado: boolean; atualizado: boolean; revisado: boolean }[];
 };
-
-const categorias: Record<Grupo['categoria'], { rotulo: string; tom: string }> = {
-  correto: { rotulo: 'Correta', tom: 'green' },
-  alternativo_valido: { rotulo: 'Solução alternativa', tom: 'purple' },
-  parcial: { rotulo: 'Parcial', tom: 'amber' },
-  erro: { rotulo: 'Erro', tom: 'red' },
-  em_branco: { rotulo: 'Em branco', tom: 'neutral' },
-};
+type Draft = { nota: string; comentario: string; conferida: boolean };
 const fmt = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
 
 async function api(url: string, init?: RequestInit) {
@@ -27,185 +23,179 @@ async function api(url: string, init?: RequestInit) {
   return data;
 }
 
-export default function CorrectionReview({ examId }: { examId: string }) {
+export default function CorrectionReview({ examId, resultsOnly = false, onReleased }: { examId: string; resultsOnly?: boolean; onReleased?: () => void }) {
   const base = `/api/exams/${examId}`;
-  const [dados, setDados] = useState<Revisao | null>(null);
-  const [erro, setErro] = useState('');
-  const [aviso, setAviso] = useState('');
-  const [progresso, setProgresso] = useState('');
-  const [numero, setNumero] = useState<number | null>(null);
-  const [edicao, setEdicao] = useState<Record<string, { nota: string; comentario: string }>>({});
-  const [aberto, setAberto] = useState<string | null>(null);
-  const ocupado = useRef(false);
+  const [data, setData] = useState<Review | null>(null);
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [progress, setProgress] = useState('');
+  const [number, setNumber] = useState<number | null>(null);
+  const [group, setGroup] = useState('all');
+  const [pendingOnly, setPendingOnly] = useState(false);
+  const [drafts, setDrafts] = useState<Record<string, Draft>>({});
+  const [associations, setAssociations] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
+  const lock = useRef(false);
 
-  const aplicar = useCallback((data: Revisao) => {
-    setDados(data);
-    setNumero(atual => atual ?? data.barema?.questoes[0]?.numero ?? null);
-  }, []);
-  const carregar = useCallback(async () => aplicar(await api(`${base}/review`)), [base, aplicar]);
+  const load = useCallback(async () => setData(await api(`${base}/review`)), [base]);
   useEffect(() => {
-    let ativo = true;
-    api(`${base}/review`).then(data => { if (ativo) aplicar(data); }, e => { if (ativo) setErro(e.message); });
-    return () => { ativo = false; };
-  }, [base, aplicar]);
+    let active = true;
+    api(`${base}/review`).then(result => { if (active) setData(result); }, e => { if (active) setError(e.message); });
+    return () => { active = false; };
+  }, [base]);
 
-  async function tarefa(fn: () => Promise<void>) {
-    if (ocupado.current) return;
-    ocupado.current = true; setBusy(true); setErro(''); setAviso('');
-    try { await fn(); } catch (e) { setErro(e instanceof Error ? e.message : 'Falha inesperada.'); }
-    finally { setProgresso(''); ocupado.current = false; setBusy(false); await carregar().catch(() => {}); }
+  async function task(fn: () => Promise<void>) {
+    if (lock.current) return;
+    lock.current = true; setBusy(true); setError(''); setNotice('');
+    try { await fn(); await load(); }
+    catch (e) { setError(e instanceof Error ? e.message : 'Não foi possível concluir a operação.'); await load().catch(() => {}); }
+    finally { setProgress(''); lock.current = false; setBusy(false); }
   }
 
-  if (!dados) return <section aria-busy="true">{erro ? <p className="form-error" role="alert">{erro}</p> : <p role="status">Carregando correção…</p>}</section>;
+  if (!data) return <section aria-busy={!error}>{error ? <><p className="form-error" role="alert">{error}</p><button className="button secondary" onClick={() => task(load)}>Tentar novamente</button></> : <p role="status">Carregando correção…</p>}</section>;
 
-  const nomeAluno = (id: string | null) => dados.alunos.find(a => a.id === id)?.nome || 'Aluno sem confirmação';
-  const confirmadas = dados.submissoes.filter(s => s.aluno_id);
-  const semAluno = dados.submissoes.length - confirmadas.length;
-  const pendentes = confirmadas.filter(s => s.status !== 'corrigida');
-  const liberada = dados.status === 'corrigida';
-  const questoes = dados.barema?.questoes || [];
-  const questao = questoes.find(q => q.numero === numero);
-  const referencia = dados.analise?.questoes.find(q => q.numero === numero);
-  const gruposDaQuestao = dados.grupos.filter(g => g.numero === numero);
-  const respostasDaQuestao = dados.respostas.filter(r => r.numero === numero);
-  const semGrupo = questoes.filter(q => dados.respostas.some(r => r.numero === q.numero && !r.grupo_id));
-  const aprovadasTodas = dados.respostas.length > 0 && dados.respostas.every(r => r.nota_final !== null);
-  const semDevolutiva = confirmadas.filter(s => !dados.feedbacks.some(f => f.submissao_id === s.id));
+  const questions = data.barema?.questoes ?? [];
+  const current = questions.find(q => q.numero === number) ?? questions[0];
+  const reference = data.analise?.questoes.find(q => q.numero === current?.numero);
+  const released = data.status === 'corrigida';
+  const confirmed = data.submissoes.filter(s => s.aluno_id);
+  const pending = confirmed.filter(s => s.status !== 'corrigida');
+  const issues = reviewIssues(data.barema, data.submissoes, data.respostas);
+  const missingFeedback = confirmed.filter(s => !data.feedbacks.some(f => f.submissao_id === s.id && f.atualizado));
+  const unreviewedFeedback = confirmed.filter(s => !data.feedbacks.some(f => f.submissao_id === s.id && f.revisado));
+  const unidentified = data.respostas.filter(answer => !questions.some(q => q.numero === answer.numero));
+  const name = (id: string | null) => data.alunos.find(a => a.id === id)?.nome || 'Aluno sem confirmação';
+  const groups = data.grupos.filter(g => g.numero === current?.numero);
+  const answers = data.respostas.filter(r => r.numero === current?.numero);
+  const validated = data.respostas.filter(r => isValidated(r, questions.find(q => q.numero === r.numero)?.valorTotal ?? -1)).length;
+  const visible = answers.filter(r => (group === 'all' || (group === 'none' ? !groups.some(g => g.id === r.grupo_id) : r.grupo_id === group)) && (!pendingOnly || !isValidated(r, current?.valorTotal ?? 0)));
+  const maximum = questions.reduce((sum, q) => sum + q.valorTotal, 0);
+  const totals = confirmed.map(s => finalTotal(data.barema, s, data.respostas)).filter((total): total is number => total !== null);
 
-  const corrigir = (lista: SubmissaoResumo[]) => tarefa(async () => {
-    const falhas: string[] = [];
-    for (const [i, s] of lista.entries()) {
-      setProgresso(`Corrigindo a prova de ${nomeAluno(s.aluno_id)} (${i + 1} de ${lista.length})… pode levar até um minuto por prova.`);
-      try { await api(`${base}/submissions/${s.id}/correct`, { method: 'POST' }); }
-      catch (e) { falhas.push(`${nomeAluno(s.aluno_id)}: ${e instanceof Error ? e.message : 'falha'}`); }
+  const correct = (submissions: Submission[]) => task(async () => {
+    const failures: string[] = [];
+    for (const [i, submission] of submissions.entries()) {
+      setProgress(`Pré-corrigindo ${name(submission.aluno_id)} · ${i + 1} de ${submissions.length}. Aguarde a análise da IA.`);
+      try { await api(`${base}/submissions/${submission.id}/correct`, { method: 'POST' }); }
+      catch (e) { failures.push(`${name(submission.aluno_id)}: ${e instanceof Error ? e.message : 'falha'}`); }
     }
-    if (falhas.length) throw new Error(`Algumas provas não foram corrigidas. ${falhas.join(' · ')}`);
-    setAviso('Pré-correção concluída. Agora agrupe as respostas.');
+    setDrafts({});
+    if (failures.length) throw new Error(failures.join(' · '));
+    setNotice('Sugestões prontas. Confira cada resposta e valide a nota e o feedback.');
   });
 
-  const agrupar = (nums: number[]) => tarefa(async () => {
-    const alertas: string[] = [];
-    for (const [i, n] of nums.entries()) {
-      setProgresso(`Agrupando respostas da questão ${n} (${i + 1} de ${nums.length})…`);
-      const r = await api(`${base}/groups`, { method: 'POST', body: JSON.stringify({ numero: n }) });
-      if (r.alerta) alertas.push(`Q${n}`);
+  const cluster = () => task(async () => {
+    if (!current) return;
+    setProgress(`Organizando as respostas da Q${current.numero} por abordagem…`);
+    const result = await api(`${base}/groups`, { method: 'POST', body: JSON.stringify({ numero: current.numero }) });
+    setGroup('all');
+    setNotice(result.alerta ? 'Grupos criados com alertas. Confira as respostas individualmente.' : 'Abordagens organizadas. A validação continua individual.');
+  });
+
+  const save = (answer: Resposta, draft: Draft) => task(async () => {
+    const score = Number(draft.nota.replace(',', '.'));
+    if (!draft.nota.trim() || !Number.isFinite(score) || score < 0 || score > (current?.valorTotal ?? 0)) throw new Error(`Informe uma nota entre 0 e ${fmt(current?.valorTotal ?? 0)}.`);
+    if (!draft.comentario.trim()) throw new Error('Revise e preencha o feedback desta resposta.');
+    if (!answer.correcao.legivel && !draft.conferida) throw new Error('Confira a resposta no arquivo original antes de validar a leitura.');
+    await api(`${base}/answers/${answer.id}`, { method: 'PATCH', body: JSON.stringify({ nota: score, comentario: draft.comentario.trim(), leituraConferida: draft.conferida }) });
+    setDrafts(previous => { const next = { ...previous }; delete next[answer.id]; return next; });
+    setNotice('Resposta validada. As demais respostas mantêm suas próprias notas e feedbacks.');
+  });
+
+  const feedback = () => task(async () => {
+    const list = missingFeedback.length ? missingFeedback : confirmed;
+    for (const [i, submission] of list.entries()) {
+      setProgress(`Preparando devolutiva de ${name(submission.aluno_id)} · ${i + 1} de ${list.length}…`);
+      await api(`${base}/submissions/${submission.id}/feedback`, { method: 'POST' });
     }
-    setAviso(alertas.length ? `Grupos criados. Confira com atenção: ${alertas.join(', ')}.` : 'Grupos criados. Revise e aprove cada grupo.');
+    setNotice('Devolutivas preparadas a partir das notas e comentários validados. A liberação exige sua confirmação.');
   });
 
-  const aprovarGrupo = (g: Grupo) => tarefa(async () => {
-    const e = edicao[g.id];
-    const nota = Number((e?.nota ?? String(g.nota_final ?? g.nota_sugerida)).replace(',', '.'));
-    if (!Number.isFinite(nota)) throw new Error('Informe uma nota válida.');
-    await api(`${base}/groups/${g.id}`, { method: 'PATCH', body: JSON.stringify({ nota, comentario: e?.comentario ?? g.comentario_final ?? g.comentario_sugerido }) });
-    setAviso(`Grupo "${g.rotulo}" aprovado.`);
-  });
+  function exportCsv() {
+    const rows = [['Aluno', ...questions.map(q => `Q${q.numero} (validada)`), 'Total validado', 'Situação'], ...data!.submissoes.map(s => {
+      const total = finalTotal(data!.barema, s, data!.respostas);
+      return [name(s.aluno_id), ...questions.map(q => {
+        const answer = data!.respostas.find(r => r.submissao_id === s.id && r.numero === q.numero);
+        return isValidated(answer, q.valorTotal) ? fmt(Number(answer!.nota_final)) : 'Pendente';
+      }), total === null ? 'Pendente' : fmt(total), total === null ? 'Em revisão' : released ? 'Liberado' : 'Validado · não liberado'];
+    })];
+    const url = URL.createObjectURL(new Blob(['\uFEFF' + rows.map(row => row.map(csvCell).join(';')).join('\r\n')], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a'); link.href = url; link.download = `notas-${examId}.csv`; link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
 
-  const ajustarResposta = (r: Resposta) => tarefa(async () => {
-    const e = edicao[r.id];
-    const nota = Number((e?.nota ?? '').replace(',', '.'));
-    if (!e || !Number.isFinite(nota)) throw new Error('Informe a nota do ajuste.');
-    await api(`${base}/answers/${r.id}`, { method: 'PATCH', body: JSON.stringify({ nota, comentario: e.comentario ?? r.comentario_final ?? '' }) });
-    setAviso('Ajuste salvo para esta resposta.');
-  });
-
-  const gerarDevolutivas = (lista: SubmissaoResumo[]) => tarefa(async () => {
-    for (const [i, s] of lista.entries()) {
-      setProgresso(`Escrevendo a devolutiva de ${nomeAluno(s.aluno_id)} (${i + 1} de ${lista.length})…`);
-      await api(`${base}/submissions/${s.id}/feedback`, { method: 'POST' });
-    }
-    setAviso('Devolutivas prontas. Libere quando quiser.');
-  });
-
-  const liberar = () => tarefa(async () => {
-    await api(`${base}/release`, { method: 'POST' });
-    setAviso('Correções liberadas. Envie a cada aluno o link da devolutiva.');
-  });
-
-  const campo = (id: string, chave: 'nota' | 'comentario', padrao: string) => edicao[id]?.[chave] ?? padrao;
-  const editar = (id: string, chave: 'nota' | 'comentario', valor: string, padrao: { nota: string; comentario: string }) =>
-    setEdicao(atual => ({ ...atual, [id]: { ...padrao, ...atual[id], [chave]: valor } }));
-
-  return <section aria-busy={busy}>
-    <div className="section-heading"><div><h2>Respostas parecidas. Uma revisão mais clara.</h2><p>A IA pré-corrige e agrupa. Você aprova cada grupo, ajusta o que precisar e libera.</p></div></div>
-    {erro && <p className="form-error" role="alert">{erro}</p>}
-    {aviso && <p className="notice compact" role="status">{aviso}</p>}
-    {progresso && <p className="notice compact" role="status">{progresso}</p>}
-
-    <div className="panel submission-list">
-      <h3>1. Pré-correção · {confirmadas.length - pendentes.length} de {confirmadas.length} provas corrigidas</h3>
-      {semAluno > 0 && <p className="muted">{semAluno} prova(s) sem aluno confirmado na aba Respostas não entram na correção.</p>}
-      {confirmadas.map(s => <div key={s.id} className="submission-row"><div>
-        <strong>{nomeAluno(s.aluno_id)}</strong>
-        <p className="muted">{s.status === 'corrigida' ? 'Corrigida' : s.status === 'corrigindo' ? 'Em correção' : s.status === 'erro' ? 'Falhou' : 'Aguardando correção'}</p>
-        {s.erro && <p className={s.status === 'erro' ? 'form-error' : 'muted'}>{s.status === 'erro' ? s.erro : `Pontos para revisar: ${s.erro}`}</p>}
-      </div>{!liberada && <button className="button secondary" disabled={busy} onClick={() => corrigir([s])}>{s.status === 'corrigida' ? 'Corrigir de novo' : 'Corrigir'}</button>}</div>)}
-      {!liberada && pendentes.length > 0 && <button className="button primary" disabled={busy} onClick={() => corrigir(pendentes)}>Corrigir {pendentes.length} prova(s) com IA</button>}
-    </div>
-
-    {dados.respostas.length > 0 && <div className="panel submission-list">
-      <h3>2. Agrupamento</h3>
-      <p className="muted">{semGrupo.length ? `Questões com respostas ainda sem grupo: ${semGrupo.map(q => `Q${q.numero}`).join(', ')}.` : 'Todas as respostas estão agrupadas.'}</p>
-      {!liberada && <button className="button primary" disabled={busy} onClick={() => agrupar((semGrupo.length ? semGrupo : questoes).map(q => q.numero))}>{semGrupo.length ? 'Agrupar respostas' : 'Refazer todos os grupos'}</button>}
-    </div>}
-
-    {gruposDaQuestao.length > 0 || respostasDaQuestao.length > 0 ? <>
-      <div className="correction-toolbar"><label>Questão<select value={numero ?? ''} onChange={e => setNumero(Number(e.target.value))}>{questoes.map(q => <option key={q.numero} value={q.numero}>Q{q.numero} · {dados.analise?.questoes.find(a => a.numero === q.numero)?.conteudo}</option>)}</select></label>
-        {!liberada && numero !== null && <button className="button secondary" disabled={busy} onClick={() => agrupar([numero])}>Refazer grupos desta questão</button>}</div>
-      {referencia && <div className="solution-reference"><strong>Referência · {fmt(questao?.valorTotal ?? 0)} pontos</strong><p>{referencia.resolucao.respostaFinal}</p></div>}
-      {gruposDaQuestao.map(g => {
-        const respostas = respostasDaQuestao.filter(r => r.grupo_id === g.id);
-        const padrao = { nota: String(g.nota_final ?? g.nota_sugerida), comentario: g.comentario_final ?? g.comentario_sugerido };
-        const cat = categorias[g.categoria];
-        return <div className="panel review-card" key={g.id}>
-          <div className="review-head"><div><strong>{g.rotulo}</strong><p className="muted">{g.descricao} · {respostas.length} resposta(s)</p></div>
-            <span className={`badge ${g.aprovado ? 'green' : cat.tom}`}>{g.aprovado ? 'Aprovado' : cat.rotulo}</span></div>
-          {g.criterio_sugerido && <div className="alternative"><div><strong>Critério sugerido para este caminho</strong><p>{g.criterio_sugerido.descricao} ({fmt(g.criterio_sugerido.pontos)} pt)</p></div></div>}
-          <fieldset disabled={busy || liberada} className="exam-editor">
-            <label>Nota do grupo (de 0 a {fmt(questao?.valorTotal ?? 0)})<input inputMode="decimal" value={campo(g.id, 'nota', padrao.nota)} onChange={e => editar(g.id, 'nota', e.target.value, padrao)} /></label>
-            <label>Comentário para os alunos<textarea value={campo(g.id, 'comentario', padrao.comentario)} onChange={e => editar(g.id, 'comentario', e.target.value, padrao)} /></label>
-            <button className="button primary" onClick={() => aprovarGrupo(g)}>{g.aprovado ? 'Salvar alterações do grupo' : 'Aprovar grupo'}</button>{' '}
-            <button type="button" className="button secondary" onClick={() => setAberto(aberto === g.id ? null : g.id)}>{aberto === g.id ? 'Ocultar respostas' : 'Ver respostas'}</button>
-          </fieldset>
-          {aberto === g.id && respostas.map(r => {
-            const c = r.correcao as CorrecaoQuestao;
-            const sub = dados.submissoes.find(s => s.id === r.submissao_id);
-            const pR = { nota: String(r.nota_final ?? c.notaSugerida), comentario: r.comentario_final ?? '' };
-            return <div key={r.id} className="submission-row"><div className="submission-content">
-              <strong>{nomeAluno(sub?.aluno_id ?? null)}</strong>{' '}
-              {sub?.arquivo_paths.map((_, i) => <a key={i} className="text-button file-link" href={`${base}/submissions/${r.submissao_id}/file?index=${i}`} target="_blank" rel="noopener noreferrer">{sub.arquivo_nomes[i] || `Página ${i + 1}`}</a>)}
-              {!c.legivel && <p className="form-error">A IA não conseguiu ler esta resposta com segurança. Confira o arquivo.</p>}
-              <p><strong>Transcrição:</strong> {c.transcricao || '—'}</p>
-              <p><strong>Método:</strong> {c.descricaoMetodo}</p>
-              <ol>{c.passos.map((p, i) => <li key={i}>{p.correto ? '✓' : '✗'} {p.descricao} <span className="muted">— {p.comentario}</span></li>)}</ol>
-              <p className="muted">{c.justificativa} · Nota sugerida: {fmt(c.notaSugerida)}{r.nota_final !== null ? ` · Nota atual: ${fmt(Number(r.nota_final))}` : ''}</p>
-              {!liberada && <fieldset disabled={busy} className="exam-editor">
-                <label>Ajustar só esta resposta<input inputMode="decimal" value={campo(r.id, 'nota', pR.nota)} onChange={e => editar(r.id, 'nota', e.target.value, pR)} /></label>
-                <label>Comentário específico<textarea value={campo(r.id, 'comentario', pR.comentario)} onChange={e => editar(r.id, 'comentario', e.target.value, pR)} /></label>
-                <button className="button secondary" onClick={() => ajustarResposta(r)}>Salvar ajuste</button>
-              </fieldset>}
-            </div></div>;
-          })}
-        </div>;
-      })}
-    </> : null}
-
-    {dados.respostas.length > 0 && <div className="panel submission-list">
-      <h3>3. Devolutivas e liberação</h3>
-      {!aprovadasTodas && <p className="muted">Aprove todos os grupos de todas as questões para gerar as devolutivas.</p>}
-      {aprovadasTodas && !liberada && <>
-        <p className="muted">{semDevolutiva.length ? `${semDevolutiva.length} aluno(s) sem devolutiva.` : 'Todas as devolutivas estão prontas.'}</p>
-        <button className="button secondary" disabled={busy} onClick={() => gerarDevolutivas(semDevolutiva.length ? semDevolutiva : confirmadas)}>{semDevolutiva.length ? 'Gerar devolutivas com IA' : 'Refazer devolutivas'}</button>{' '}
-        <button className="button primary" disabled={busy || semDevolutiva.length > 0} onClick={liberar}>Liberar correções</button>
+  return <section className="correction-review" aria-busy={busy}>
+    <div className="section-heading"><div><h2>{resultsOnly ? 'Notas e resultados' : 'Cada resposta merece seu olhar.'}</h2><p>{resultsOnly ? 'Notas validadas pelo professor. Questões pendentes não entram no total.' : 'A IA sugere. Você revisa a resposta, ajusta a nota e o feedback e valida individualmente.'}</p></div>{resultsOnly && <button className="button secondary" disabled={!data.submissoes.length} onClick={exportCsv}>Exportar notas validadas</button>}</div>
+    {error && <p className="form-error" role="alert">{error}</p>}
+    {(notice || progress) && <p className="notice compact" role="status">{progress || notice}</p>}
+    <div className="review-summary"><span><strong>{validated}</strong> / {data.submissoes.length * questions.length} respostas validadas</span><span><strong>{totals.length}</strong> / {data.submissoes.length} provas completas</span><span className={`badge ${released ? 'green' : 'amber'}`}>{released ? 'Resultados liberados' : 'Resultados em revisão'}</span></div>
+    {!data.submissoes.length && <div className="empty"><h3>Aguardando as provas dos alunos</h3><p>Use a aba Respostas para receber os arquivos e confirmar os alunos.</p></div>}
+    {!resultsOnly && <>
+      {!!unidentified.length && <div className="panel submission-list"><h3>Pendências de associação · {unidentified.length}</h3><p>Confira o arquivo e indique a questão de cada resposta. Nenhuma nota será validada automaticamente.</p>{unidentified.map(answer => {
+        const submission = data.submissoes.find(s => s.id === answer.submissao_id);
+        const available = questions.filter(q => !data.respostas.some(r => r.submissao_id === answer.submissao_id && r.numero === q.numero));
+        return <article className="review-card" key={answer.id}><h4>{name(submission?.aluno_id ?? null)}</h4><p className="review-transcription">{answer.correcao.transcricao || 'Transcrição não disponível. Confira o arquivo original.'}</p>{submission?.arquivo_paths.map((_, i) => <a key={i} className="text-button" href={`${base}/submissions/${answer.submissao_id}/file?index=${i}`} target="_blank" rel="noopener noreferrer">Abrir {submission.arquivo_nomes[i] || `página ${i + 1}`}</a>)}<label>Questão desta resposta<select aria-label={`Associar resposta de ${name(submission?.aluno_id ?? null)}`} disabled={busy || released} value={associations[answer.id] ?? ''} onChange={event => setAssociations(previous => ({ ...previous, [answer.id]: event.target.value }))}><option value="">Selecione a questão</option>{available.map(q => <option key={q.numero} value={q.numero}>Q{q.numero}</option>)}</select></label><button className="button secondary" disabled={busy || released || !associations[answer.id]} onClick={() => task(async () => { const target = Number(associations[answer.id]); await api(`${base}/answers/${answer.id}/associate`, { method: 'POST', body: JSON.stringify({ numero: target }) }); setNumber(target); setGroup('all'); setNotice('Questão associada. Confira o arquivo e valide a nota e o feedback individualmente.'); })}>Associar questão</button>{!available.length && <p className="form-error">Todas as questões já têm uma resposta. Confira se há leitura duplicada antes de continuar.</p>}</article>;
+      })}</div>}
+      {!!data.submissoes.length && <details className="panel submission-list" open={pending.length > 0 || confirmed.length !== data.submissoes.length}>
+        <summary>Pré-correção · {confirmed.length - pending.length} de {data.submissoes.length} provas analisadas</summary>
+        {data.submissoes.map(s => <div key={s.id} className="submission-row"><div><strong>{name(s.aluno_id)}</strong><p>{!s.aluno_id ? 'Confirme o aluno na aba Respostas.' : s.status === 'corrigida' ? 'Sugestões disponíveis para revisão' : s.status === 'erro' ? 'A análise falhou. Tente novamente.' : 'Aguardando pré-correção'}</p>{s.erro && <p className="form-error">{s.erro}</p>}</div>{!released && s.aluno_id && s.status !== 'corrigida' && <button className="button secondary" disabled={busy} onClick={() => correct([s])}>Pré-corrigir</button>}</div>)}
+        {!released && pending.length > 0 && <button className="button primary" disabled={busy || !questions.length} onClick={() => correct(pending)}>Pré-corrigir {pending.length} prova(s)</button>}
+      </details>}
+      {!!questions.length && <>
+        <div className="correction-toolbar">
+          <label>Questão<select aria-label="Questão" value={current?.numero ?? ''} disabled={busy} onChange={e => { setNumber(Number(e.target.value)); setGroup('all'); }}>{questions.map(q => <option key={q.numero} value={q.numero}>Q{q.numero} · {data.respostas.filter(r => r.numero === q.numero && isValidated(r, q.valorTotal)).length}/{data.submissoes.length} validadas</option>)}</select></label>
+          <label>Abordagem<select aria-label="Abordagem" value={group} onChange={e => setGroup(e.target.value)}><option value="all">Todas as abordagens</option><option value="none">Sem grupo</option>{groups.map(g => <option key={g.id} value={g.id}>{g.rotulo}</option>)}</select></label>
+          <label className="review-check"><input type="checkbox" checked={pendingOnly} onChange={e => setPendingOnly(e.target.checked)} />Somente pendentes</label>
+        </div>
+        <details className="solution-reference"><summary>Q{current.numero} · Referência e barema · {fmt(current.valorTotal)} pontos</summary><p>{reference?.enunciado}</p><p>{reference?.resolucao.respostaFinal}</p><ul>{current.criterios.map(c => <li key={c.id}>{c.descricao} · {fmt(c.pontos)} pt</li>)}</ul></details>
+        {!released && answers.length > 0 && !answers.some(r => r.nota_final !== null) && <div className="submission-actions"><button className="button secondary" disabled={busy} onClick={cluster}>Organizar Q{current.numero} por abordagem</button><p className="muted">Opcional. Você pode revisar respostas sem agrupamento.</p></div>}
+        {confirmed.filter(s => !answers.some(r => r.submissao_id === s.id)).map(s => <div className="notice" key={s.id}><div className="submission-content"><p><strong>{name(s.aluno_id)} · Q{current.numero} sem resposta identificada.</strong> Confira o arquivo. A questão permanece pendente; ausência de leitura não é nota zero.</p>{s.arquivo_paths.map((_, i) => <a className="text-button" key={i} href={`${base}/submissions/${s.id}/file?index=${i}`} target="_blank" rel="noopener noreferrer">Abrir {s.arquivo_nomes[i] || `página ${i + 1}`}</a>)}{!released && <ManualAnswer key={`${s.id}-${current.numero}`} examId={examId} submissionId={s.id} number={current.numero} disabled={busy || unidentified.some(answer => answer.submissao_id === s.id)} onSaved={() => { void load().catch(e => setError(e.message)); }} />}</div></div>)}
+        {!visible.length && <div className="empty"><h3>{answers.length ? 'Nenhuma resposta neste filtro' : 'Ainda não há respostas para esta questão'}</h3><p>{answers.length ? 'Selecione outra abordagem ou desmarque “Somente pendentes”.' : 'Selecione outra questão ou conclua a pré-correção.'}</p></div>}
+        {visible.map(answer => {
+          const correction = answer.correcao;
+          const submission = data.submissoes.find(s => s.id === answer.submissao_id);
+          const approach = groups.find(g => g.id === answer.grupo_id);
+          const approved = isValidated(answer, current.valorTotal);
+          const draft = drafts[answer.id] ?? { nota: answer.nota_final !== null ? String(answer.nota_final) : correction.legivel && correction.origem !== 'professor' ? String(correction.notaSugerida) : '', comentario: answer.comentario_final ?? correction.justificativa, conferida: approved };
+          const change = (value: Partial<Draft>) => setDrafts(previous => ({ ...previous, [answer.id]: { ...draft, ...value } }));
+          return <article className="panel review-card" key={answer.id} aria-label={`Resposta de ${name(submission?.aluno_id ?? null)}, Q${answer.numero}`}>
+            <div className="review-head"><div><h3>{name(submission?.aluno_id ?? null)}</h3><p className="muted">{approach?.rotulo ?? 'Sem grupo'} · Q{answer.numero}</p></div><span className={`badge ${approved ? 'green' : 'amber'}`}>{drafts[answer.id] ? 'Alterações não salvas' : approved ? 'Validada' : 'Pendente de revisão'}</span></div>
+            <div className="submission-actions">{submission?.arquivo_paths.map((_, i) => <a key={i} className="text-button" href={`${base}/submissions/${answer.submissao_id}/file?index=${i}`} target="_blank" rel="noopener noreferrer">Abrir {submission.arquivo_nomes[i] || `página ${i + 1}`}</a>)}</div>
+            {!correction.legivel && <p className={approved ? 'muted' : 'form-error'}>{approved ? 'A IA sinalizou leitura incerta. O professor conferiu o arquivo e validou esta resposta.' : 'Leitura incerta. Confira o arquivo original; não atribua zero automaticamente.'}</p>}
+            {correction.metodo === 'alternativo' && <div className="alternative"><div><strong>Possível solução alternativa</strong><p>{correction.descricaoMetodo}</p>{approach?.criterio_sugerido && <p>Critério sugerido: {approach.criterio_sugerido.descricao} · {fmt(approach.criterio_sugerido.pontos)} pt. Confira a adequação ao barema antes de validar.</p>}</div></div>}
+            <p className="review-transcription"><strong>{correction.origem === 'professor' ? 'Transcrição conferida pelo professor' : 'Transcrição da IA'}</strong><br />{correction.transcricao || 'Não disponível. Confira o arquivo.'}</p>
+            {correction.origem !== 'professor' && <details className="review-reasoning"><summary>Análise sugerida pela IA · {fmt(correction.notaSugerida)} / {fmt(current.valorTotal)}</summary><p>{correction.descricaoMetodo}</p><ol>{correction.passos.map((step, i) => <li key={i}>{step.correto ? '✓' : '✗'} {step.descricao} — {step.comentario}</li>)}</ol><p>{correction.justificativa}</p></details>}
+            {released ? <div className="notice"><p><strong>Nota validada: {fmt(Number(answer.nota_final))} / {fmt(current.valorTotal)}</strong><br />{answer.comentario_final}</p></div> : <fieldset disabled={busy} className="exam-editor">
+              <div className="review-fields"><label>Nota final · máximo {fmt(current.valorTotal)}<input inputMode="decimal" value={draft.nota} onChange={e => change({ nota: e.target.value })} /></label><label>Feedback ao aluno<textarea maxLength={2000} value={draft.comentario} onChange={e => change({ comentario: e.target.value })} /></label></div>
+              {!correction.legivel && <label className="review-check"><input type="checkbox" checked={draft.conferida} onChange={e => change({ conferida: e.target.checked })} />Conferi a resposta no arquivo e resolvi a pendência de leitura.</label>}
+              <div className="review-footer"><small>A validação se aplica somente a esta resposta.</small><button className="button primary" disabled={approved && !drafts[answer.id]} onClick={() => save(answer, draft)}>{approved ? 'Salvar revisão individual' : 'Validar resposta'}</button></div>
+            </fieldset>}
+          </article>;
+        })}
       </>}
-      {liberada && <>
-        <p>Correções liberadas. Links das devolutivas:</p>
-        {confirmadas.map(s => { const f = dados.feedbacks.find(x => x.submissao_id === s.id); if (!f) return null;
-          const link = `${typeof window === 'undefined' ? '' : window.location.origin}/aluno/${f.token}`;
-          return <div key={s.id} className="submission-row"><div><strong>{nomeAluno(s.aluno_id)}</strong><p><a className="text-button" href={link} target="_blank" rel="noopener noreferrer">{link}</a></p></div>
-            <button className="button secondary" onClick={() => navigator.clipboard.writeText(link).then(() => setAviso(`Link de ${nomeAluno(s.aluno_id)} copiado.`), () => setAviso(link))}>Copiar link</button></div>; })}
+    </>}
+    {resultsOnly && !!data.submissoes.length && <>
+      <p className="notice">{totals.length ? `Média das ${totals.length} provas completas e validadas: ${fmt(totals.reduce((a, b) => a + b, 0) / totals.length)} / ${fmt(maximum)}.` : 'A média estará disponível após a validação completa de pelo menos uma prova.'} {totals.length < data.submissoes.length ? 'Cobertura parcial da turma.' : ''}</p>
+      <div className="panel table-wrap"><table><caption className="review-caption">Somente notas validadas · {released ? 'resultados liberados' : 'ainda não liberados'}</caption><thead><tr><th>Aluno</th>{questions.map(q => <th key={q.numero}>Q{q.numero} / {fmt(q.valorTotal)}</th>)}<th>Total / {fmt(maximum)}</th><th>Situação</th></tr></thead><tbody>{data.submissoes.map(s => {
+        const total = finalTotal(data.barema, s, data.respostas);
+        return <tr key={s.id}><th scope="row">{name(s.aluno_id)}</th>{questions.map(q => { const answer = data.respostas.find(r => r.submissao_id === s.id && r.numero === q.numero); return <td key={q.numero}>{isValidated(answer, q.valorTotal) ? fmt(Number(answer!.nota_final)) : 'Pendente'}</td>; })}<td>{total === null ? 'Pendente' : fmt(total)}</td><td>{total === null ? 'Em revisão' : released ? 'Liberado' : 'Validado · não liberado'}</td></tr>;
+      })}</tbody></table></div>
+    </>}
+    {!!data.submissoes.length && <div className="panel submission-list">
+      <h3>Devolutivas e liberação</h3>
+      {!released && <>
+        {!!issues.length && <div className="notice"><div><strong>Antes de liberar</strong><ul>{issues.map(issue => <li key={issue}>{issue}</li>)}</ul></div></div>}
+        {!!Object.keys(drafts).length && <p className="form-error">Salve as revisões individuais antes de preparar ou liberar as devolutivas.</p>}
+        <p>{missingFeedback.length} de {confirmed.length} devolutivas ainda precisam ser preparadas.</p>
+        <p>{unreviewedFeedback.length} texto(s) aguardam revisão e aprovação do professor.</p>
+        {confirmed.map(s => data.feedbacks.some(f => f.submissao_id === s.id && f.atualizado) && <div className="submission-row" key={s.id}><div className="submission-content"><strong>{name(s.aluno_id)} · {data.feedbacks.find(f => f.submissao_id === s.id)?.revisado ? 'Texto aprovado' : 'Texto pendente de revisão'}</strong><FeedbackEditor examId={examId} submissionId={s.id} studentName={name(s.aluno_id)} disabled={busy || !!issues.length || !!Object.keys(drafts).length} onSaved={() => { void load().catch(e => setError(e.message)); }} /></div></div>)}
+        <div className="submission-actions"><button className="button secondary" disabled={busy || !!issues.length || !!Object.keys(drafts).length} onClick={feedback}>{missingFeedback.length ? 'Preparar devolutivas' : 'Refazer devolutivas'}</button><button className="button primary" disabled={busy || !!issues.length || !!missingFeedback.length || !!unreviewedFeedback.length || !!Object.keys(drafts).length} onClick={() => task(async () => { await api(`${base}/release`, { method: 'POST' }); onReleased?.(); setNotice('Resultados liberados. Os alunos já podem consultar suas devolutivas.'); })}>Liberar resultados aos alunos</button></div>
       </>}
+      {released && <><p>Resultados liberados pelo professor. Compartilhe cada link somente com o respectivo aluno.</p>{confirmed.map(s => {
+        const item = data.feedbacks.find(f => f.submissao_id === s.id && f.publicado);
+        if (!item) return <p key={s.id}>{name(s.aluno_id)} · Devolutiva indisponível.</p>;
+        return <div className="submission-row" key={s.id}><div><strong>{name(s.aluno_id)}</strong><p><a className="text-button" href={`/aluno/${item.token}`} target="_blank" rel="noopener noreferrer">Abrir devolutiva</a></p></div><button className="button secondary" onClick={() => { const link = `${window.location.origin}/aluno/${item.token}`; navigator.clipboard.writeText(link).then(() => setNotice(`Link de ${name(s.aluno_id)} copiado.`), () => setNotice(`Copie o link: ${link}`)); }}>Copiar link</button></div>;
+      })}</>}
     </div>}
   </section>;
 }

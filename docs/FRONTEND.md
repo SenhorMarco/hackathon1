@@ -1,66 +1,63 @@
 # Interface do professor — Aula Clara
 
-A interface faz parte da aplicação Next.js da raiz. Instale as dependências e execute todos os comandos na raiz do repositório:
+A interface do professor faz parte da aplicação Next.js na raiz do repositório. Use Node.js 22.18+ ou 24+:
 
 ```bash
 npm ci
 npm run dev
 ```
 
-Abra http://localhost:3000. Para validar, use `npm run typecheck` e `npm run build`. Para produção com Node.js, execute `npm start` após o build.
+Abra http://localhost:3000 e entre em `/login` com uma conta de professor. Para configurar Supabase Auth e o banco, siga [docs/CONTAS.md](CONTAS.md) e configure as variáveis de `.env.example`.
 
-## Arquivos e rotas
+## Páginas e componentes
 
-- `src/app/`: layout, estilos e páginas.
-- `src/components/workspace.tsx`: interface, cadastro, upload de provas, análise, edição de baremas, relatórios e estado.
-- `src/lib/data.ts`: tipos TypeScript, mocks e funções de pontuação.
-- `docs/INTEGRACAO_BACKEND.md`: pontos de integração e proposta de endpoints.
+- `/professor/dashboard`: visão geral das turmas e provas.
+- `/professor/provas`: preparação, análise, barema, recebimento e revisão de provas.
+- `/professor/alunos`: cadastro e consulta dos alunos da turma.
+- `/professor/relatorios`: resultados factuais baseados em notas validadas e exportação CSV.
+- `src/components/workspace.tsx`: estrutura da área do professor e seleção do contexto.
+- `src/components/correction-review.tsx`: revisão individual, resultados, devolutivas e liberação.
+- `src/lib/review.ts`: validação de resposta, completude, total final e escaping de CSV.
 
-Rotas: `/`, `/professor/dashboard`, `/professor/provas`, `/professor/alunos` e `/professor/relatorios`. A seleção de turma e prova acontece no cliente.
+## Fluxo de revisão
 
-## Comportamento atual
+O fluxo recebe os arquivos associados pelo professor a alunos confirmados. A pré-correção da IA cria sugestões para cada resposta identificada. Na revisão, o professor seleciona uma questão, consulta a transcrição e a análise sugerida e pode abrir os arquivos originais. Ele informa ou ajusta a nota, escreve o feedback e valida cada resposta separadamente. Se a leitura foi sinalizada como incerta, a validação exige a conferência do arquivo original.
 
-- Cadastro de turmas e alunos, provas, critérios editáveis, associação de arquivos, revisão de notas e feedback, aprovação, exportação CSV, histórico e sugestões de estudo funcionam no navegador.
-- Os registros persistem em `localStorage`, sob a chave `aula-clara-v3`, sem sincronização entre usuários.
-- Provas e submissões persistidas ficam no bucket privado e abrem por URLs assinadas após recarregar. Somente os arquivos do fluxo demonstrativo antigo ficam em URLs de objetos da sessão.
-- Provas criadas por upload são analisadas pela IA a partir de PDF/PNG/JPEG, com barema sugerido editável e confirmação no banco. Dados antigos da demonstração continuam usando exemplos de Física.
-- Upload, análise da prova, confirmação de baremas e envios dos alunos estão conectados ao servidor. Autenticação, correção automática e devolutivas continuam fora desses quatro fluxos. Consulte o README para configurar os serviços de Production e validar o domínio.
-- O professor consulta o histórico individual em uma janela de detalhes; não há área de aluno.
+O agrupamento por abordagem é opcional e apenas organiza a fila de revisão. A aprovação de grupos foi desativada; uma resposta nunca herda automaticamente a nota ou o feedback de outra resposta.
 
-## Hospedagem estática opcional
+Transcrições com questão ausente, fora do barema ou duplicada são mantidas como pendências com identificadores técnicos que não são exibidos como números de questão. O professor abre o arquivo, escolhe uma questão livre e associa a resposta manualmente. O servidor limpa nota e comentário anteriores e marca a leitura como incerta, para que a resposta seja avaliada de novo pelo barema correto. Se a IA não extraiu a resposta, o professor pode registrar a transcrição após conferir o arquivo e selecionar a questão; o registro começa sem nota e não substitui resposta existente. Não é possível registrar outra resposta enquanto houver uma associação pendente nessa submissão.
 
-A configuração padrão usa o servidor Next.js para permitir a integração com os módulos de backend. Para uma demonstração exclusivamente estática, configure `output: 'export'` e `images: { unoptimized: true }` em `next.config.ts` e execute `npm run build`. Essa modalidade exige que as rotas sejam compatíveis com exportação estática e não permite Route Handlers dinâmicos.
+Antes de preparar e liberar devolutivas, o sistema verifica que cada submissão tem um aluno confirmado, pré-correção concluída e exatamente uma resposta para cada questão do barema. Cada resposta deve ter nota dentro do máximo e feedback não vazio. Respostas extras ou sem correspondência no barema, além de respostas ausentes ou duplicadas, mantêm a liberação bloqueada. Uma resposta ausente permanece pendente, não recebe zero por padrão.
 
-A pasta `out/` será gerada pelo build; ela não acompanha o código-fonte. Use `npm run start:static` para conferir a exportação localmente. O script lê `out/` na raiz e aceita a variável `PORT`.
+As devolutivas são preparadas com notas e comentários validados, e o texto gerado pela IA precisa de revisão e aprovação humana por aluno. O servidor calcula um snapshot SHA-256 a partir do barema, análise, referências dos arquivos, transcrição, notas e comentários usados. Depois da resposta da IA, compara novamente o snapshot; se os dados mudaram durante a geração, não salva o texto. A edição do texto também usa uma versão de conteúdo para rejeitar gravações baseadas em revisão desatualizada. A liberação exige texto válido e aprovado para a revisão atual. Preparar ou aprovar a devolutiva não a publica: o professor libera os resultados em uma ação explícita.
 
-Envie todo o conteúdo de `out/`, incluindo `_next/`, à hospedagem. Para Apache, copie `docs/apache.htaccess` para `out/.htaccess`. Para Nginx, adapte `docs/nginx.conf` ao domínio e ao diretório público. As regras devem resolver URLs sem extensão para os arquivos `.html` correspondentes.
+Essas verificações ocorrem em etapas entre rotas e não formam uma transação única do banco. Há uma janela de concorrência entre operações simultâneas; uma garantia transacional no banco permanece pendente.
 
-## Validação de lint, persistência e build
+## Relatórios e CSV
 
-Execute na raiz:
+Os resultados mostram notas validadas por questão. Total e média só são calculados para provas completas; provas com qualquer pendência ficam identificadas como em revisão e não entram na média. A média informa a cobertura parcial da turma quando nem todos os envios estão completos.
+
+A exportação CSV inclui uma coluna por questão, total validado e situação. Notas de questões sem validação aparecem como `Pendente`; o total também fica pendente se a prova não estiver completa. O arquivo usa codificação UTF-8 com BOM e separador ponto e vírgula.
+
+## Persistência e configuração
+
+As operações do professor usam as APIs de servidor e Supabase. As rotas verificam sessão, papel e propriedade dos dados. Os arquivos são mantidos no bucket privado e acessados por links temporários. Configure as variáveis, schema e autenticação conforme [README.md](../README.md) e [docs/CONTAS.md](CONTAS.md). Os drafts de edição ainda não salvos não são compartilhados entre dispositivos.
+
+## Limites conhecidos
+
+- **RN17 não implementada:** mudanças de barema não invalidam ou marcam automaticamente como desatualizadas as sugestões já produzidas, e não há aviso completo sobre notas afetadas.
+- **RN19 não implementada:** notas/feedback alterados após a liberação não têm fluxo completo de atualização da devolutiva nem indicação de alteração ao aluno.
+- O envio pelo próprio aluno e o controle de prazos estão sendo implementados em paralelo; esta interface não deve ser descrita como cobrindo esses requisitos.
+
+## Testes da revisão
 
 ```bash
-npm run lint
-npm run typecheck
-node scripts/testar-workspace.mjs
-npm run build
-node scripts/testar-upload.mjs
+node scripts/testar-revisao.mjs
+node scripts/testar-revisao-api.mjs
+node scripts/testar-revisao-browser.mjs
+node scripts/testar-pendencias.mjs
 ```
 
-A persistência da interface usa `src/lib/workspace-store.ts` com `useSyncExternalStore`: o snapshot do servidor mantém a hidratação consistente e os dados do navegador são recuperados sem `setState` síncrono em efeitos. Alterações são gravadas na própria operação que atualiza a fonte de estado. Se a gravação falhar, os dados permanecem em memória e um aviso tem prioridade sobre a mensagem de sucesso. O link da marca usa `next/link` para voltar ao início sem recarregar o documento.
+O primeiro script exercita as regras puras de validação, completude, totalização e exportação CSV. `testar-pendencias.mjs` confere que linhas sem número, desconhecidas ou duplicadas são preservadas com transcrição intacta e sem nota. O teste de API e o de navegador exercitam o fluxo de revisão com dependências simuladas; não são uma verificação de serviços externos em produção.
 
-O teste de persistência cobre restauração de dados existentes, snapshots estáveis, atualizações consecutivas, JSON inválido, armazenamento bloqueado/quota esgotada e remoção de assinaturas. Para conferir as telas manualmente, crie uma turma, recarregue a página, volte ao início pela marca e confira se a turma continua disponível. Teste também as rotas de provas, alunos, relatórios e o fechamento de modais por Escape.
-
-### Diagnóstico do Turbopack
-
-O script de build continua `next build`, com Turbopack. O erro reproduzido no ambiente restrito foi `binding to a port — Operation not permitted (os error 1)` durante o processamento de CSS por workers Node. Um teste de abertura de porta local também retornou `EPERM` nesse ambiente, enquanto funcionou com a permissão necessária. Não foi identificado erro de código/configuração que exigisse trocar o compilador.
-
-Uma nova tentativa com permissão ainda reproduziu a falha armazenada no cache. Após remover **somente** `.next/cache/turbopack` (artefatos gerados de build) e executar novamente com permissão de porta local, o build padrão passou, inclusive antes das correções de lint. `.next/dev/cache` e o código foram preservados. Em caso dessa falha específica, confira primeiro as restrições do executor e, após corrigi-las, descarte apenas o cache de build afetado. Limpar o cache sem liberar a porta não resolve a restrição. Não é necessário desativar cache nem mudar o script para Webpack.
-
-A documentação local consultada está em `node_modules/next/dist/docs/01-app/03-api-reference/08-turbopack.md`, `05-config/01-next-config-js/turbopackFileSystemCache.md` e `02-components/link.md` dentro da mesma árvore de referência. Ela descreve o processamento PostCSS em workers, os caches separados de build/desenvolvimento e a navegação com Link.
-
-### Vercel
-
-O responsável confirmou que a hospedagem é Vercel com o preset Next.js e sem personalização de comandos. O comando de build deste repositório é `npm run build` → `next build`; não foi adicionado override de build. `npm start` → `next start` permanece disponível para execução local/servidor Node. Os exemplos Apache/Nginx e `start:static` são alternativas de exportação estática, não a configuração da Vercel; as APIs atuais requerem execução de servidor.
-
-O build local não comprova o resultado de um deploy remoto. Após o push, confira o deployment do commit na Vercel e o log do build; as configurações do painel e o resultado do deployment não estão versionados neste repositório.
+Para checagens gerais, execute `npm run lint`, `npm run typecheck` e `npm run build`.

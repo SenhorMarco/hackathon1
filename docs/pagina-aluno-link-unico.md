@@ -46,11 +46,9 @@ Como a página usa streaming com Suspense, um estado indisponível pode chegar c
 
 ## Validação com Supabase real
 
-As credenciais do banco não estavam configuradas localmente no início desta tarefa; o acesso administrativo à Vercel retornava 403 na auditoria anterior. O teste aceita `.env` ou `.env.local` (este tem preferência quando existe). Na conferência seguinte, o `.env` tinha `SUPABASE_URL` preenchida, mas não era uma URL válida, e não havia chave de banco. Foi solicitado corrigir a URL e disponibilizar a chave de servidor usada pelo código, sem enviar valores pelo chat.
+Validação concluída em 31/10/2026, das 10h02m21s às 10h02m34s de Brasília, no domínio https://hackathon1-blond.vercel.app, com Supabase real. As credenciais foram fornecidas no `.env`, sem exposição ou inclusão no Git. Antes de gravar, a autenticação foi confirmada e o registro sintético da auditoria anterior foi comparado ao domínio para conferir que ambos usavam o mesmo banco.
 
-Após a correção informada pelo usuário, a URL passou a ser válida. A chave de banco ainda não estava disponível na nova conferência; o teste de gravação real não foi iniciado sem ela.
-
-O roteiro abaixo está preparado para validar com banco real. Não exige IA nem consome créditos de IA. Cria duas provas, dois alunos e devolutivas manuais sintéticas para testar exclusivamente leitura/publicação. Esses registros **permanecem no banco**, identificados pelo prefixo `VALIDACAO_LINK_ALUNO_`; nenhum registro existente é removido.
+O roteiro abaixo foi executado com sucesso. Não exige IA nem consome créditos de IA. Cria duas provas, dois alunos e devolutivas manuais sintéticas para testar exclusivamente leitura/publicação. Esses registros **permanecem no banco**, identificados pelo prefixo `VALIDACAO_LINK_ALUNO_`; nenhum registro existente é removido. O teste aceita `.env` ou `.env.local` (este tem preferência quando existe).
 
 ```bash
 PLAYWRIGHT_MODULE=/caminho/absoluto/playwright/index.mjs \
@@ -60,4 +58,30 @@ node scripts/testar-pagina-aluno-real.mjs https://seu-deploy --criar-dados-sinte
 
 O Supabase configurado deve ser o mesmo usado pelo domínio informado. O relatório com os identificadores e links sintéticos fica em `/tmp/hackathon-student-page-real.json` (ou no caminho definido por `REPORT_PATH`). O teste verifica persistência da publicação, token estável, dois navegadores independentes sem login, notas e comentários finais, recarga e retirada de publicação.
 
-**Não tratar a suíte local simulada como comprovação com Supabase real.** O cartão permanece em Testando enquanto faltar essa verificação. Para testar manualmente com dados já disponíveis, libere uma devolutiva sintética pela interface e abra seu link em janela anônima; confira notas e comentários, recarregue e compare com o link de outro aluno fictício.
+### Evidências da execução real
+
+Prefixo dos registros: `VALIDACAO_LINK_ALUNO_1793451741528`. Resultado: **passou**, com zero chamadas de IA. Código de referência na main: `8164087`, com deployment confirmado como bem-sucedido no GitHub (correções da página em `a2c992d`).
+
+| Verificação | Resultado observado |
+| --- | --- |
+| Token inválido, inexistente ou não publicado | Interface indisponível sem dados do aluno |
+| Liberação pelo endpoint de produção | HTTP 200; `publicado: true` e mesmo token confirmados por leitura direta do banco |
+| Dois links em contextos independentes sem login | Cada link mostrou o aluno e o comentário correto; não exibiu o nome do outro aluno; nenhum cookie de login |
+| Notas finais | Aluno A: 1,5/2; aluno B: 2/2, em lugar da nota sugerida sintética zero |
+| Recarga | Títulos, notas e comentários persistiram |
+| Retirada de publicação após acesso | O link antes acessível passou a mostrar indisponibilidade; somente o registro sintético foi alterado |
+| Republicação | Mesmo link voltou a abrir pela rota de liberação; os dados sintéticos foram mantidos para conferência |
+| Tela móvel | Largura de 390 px sem transbordamento horizontal |
+| Estilos e exercício | CSS Module aplicado e resposta do exercício aberta; captura móvel de produção inspecionada |
+
+| Recurso | Identificador |
+| --- | --- |
+| Turma sintética | `29df78d4-cf0a-4ff1-80d3-1df39df7d37b` |
+| Prova A | `f3a59c28-5ebd-4bfc-ab61-68b6a1b45290` |
+| Submissão A | `ed18a9f7-0ada-4549-8778-10f5d58ab36b` |
+| Prova B | `9153b540-1151-4810-97be-7b1c0fe75bb3` |
+| Submissão B | `c0a01dac-1525-4483-b7b0-a6e6ca257bec` |
+
+Essa execução comprova leitura, publicação e persistência com serviços reais. Os textos de feedback foram escritos manualmente como fixtures: o teste não avalia qualidade de IA nem refaz o fluxo de geração dos textos.
+
+Para testar manualmente, use os links sintéticos do relatório local ou libere outra devolutiva sintética pela interface e abra o link em janela anônima. Confira notas e comentários, recarregue e compare com o link de outro aluno fictício. O cartão está apto a Feito: a pendência de acesso ao banco e validação positiva em produção foi resolvida.

@@ -1,5 +1,6 @@
 import { ia, MODELO } from '@/lib/ai/client';
 import { corrigirAluno } from '@/lib/ai/correcao';
+import { logFalhaIA, motivoFalhaIA } from '@/lib/ai/erros';
 import type { CorrecaoAluno } from '@/lib/ai/schemas';
 import { ErroRevisaoIA } from '@/lib/ai/validacao';
 import { apiError, findProva, privateHeaders, serverError, uuid } from '@/lib/db/api';
@@ -46,9 +47,10 @@ export async function POST(_request: Request, context: { params: Promise<{ examI
         correcao = error.resultado as CorrecaoAluno;
         alerta = error.motivos.join('; ');
       } else {
-        console.error('Falha na correção:', error instanceof Error ? error.message : 'erro');
-        const { data } = await db().from('submissoes').update({ status: 'erro', erro: 'A IA não conseguiu corrigir esta prova. Tente novamente.' }).eq('id', submissionId).select('*').single();
-        return Response.json({ submissao: data, error: 'A IA não conseguiu corrigir esta prova. Tente novamente.' }, { status: 502, headers: privateHeaders });
+        logFalhaIA('correção', error);
+        const mensagem = `A IA não conseguiu corrigir esta prova: ${motivoFalhaIA(error)}`;
+        const { data } = await db().from('submissoes').update({ status: 'erro', erro: mensagem }).eq('id', submissionId).select('*').single();
+        return Response.json({ submissao: data, error: mensagem }, { status: 502, headers: privateHeaders });
       }
     }
 

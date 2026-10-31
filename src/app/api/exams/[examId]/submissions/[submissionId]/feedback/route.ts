@@ -1,4 +1,5 @@
 import { ia, MODELO } from '@/lib/ai/client';
+import { logFalhaIA, motivoFalhaIA } from '@/lib/ai/erros';
 import { gerarFeedback } from '@/lib/ai/feedback';
 import type { CorrecaoQuestao } from '@/lib/ai/schemas';
 import { apiError, findProva, privateHeaders, serverError, uuid } from '@/lib/db/api';
@@ -27,8 +28,8 @@ export async function POST(_request: Request, context: { params: Promise<{ examI
         questoes: respostas.map(r => ({ numero: r.numero, correcao: r.correcao as CorrecaoQuestao, notaFinal: Number(r.nota_final), comentarioProfessor: r.comentario_final })),
       });
     } catch (e) {
-      console.error('Falha na devolutiva:', e instanceof Error ? e.message : 'erro');
-      return apiError('A IA não conseguiu escrever a devolutiva. Tente novamente.', 502);
+      logFalhaIA('devolutiva', e);
+      return apiError(`A IA não conseguiu escrever a devolutiva: ${motivoFalhaIA(e)}`, 502);
     }
     // Mantém o token (e o link) se a devolutiva for refeita.
     const { data, error: upError } = await db().from('feedbacks')

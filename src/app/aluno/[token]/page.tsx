@@ -44,16 +44,31 @@ async function Devolutiva({ params }: { params: Promise<{ token: string }> }) {
   if (!prova || !aluno || prova.status !== 'corrigida') notFound();
   const parsedFeedback = FeedbackAluno.safeParse(feedback.conteudo);
   const parsedBarema = Barema.safeParse(prova.barema);
-  if (!parsedFeedback.success || !parsedBarema.success) throw new Error('A devolutiva salva está incompleta.');
-  const conteudo = parsedFeedback.data;
-  const valores = new Map(parsedBarema.data.questoes.map(q => [q.numero, q.valorTotal]));
   // Uma nota ainda não aprovada não pode aparecer como zero para o aluno.
-  if (!valores.size || respostas.length !== valores.size || conteudo.questoes.length !== valores.size ||
-    new Set(conteudo.questoes.map(q => q.numero)).size !== valores.size ||
-    conteudo.questoes.some(q => !valores.has(q.numero)) ||
-    respostas.some(r => !valores.has(r.numero) || r.nota_final === null || !Number.isFinite(Number(r.nota_final)))) {
-    throw new Error('A correção ainda não está completa.');
+  // Correção incompleta (ex.: liberada antes de todas as questões terem nota) mostra um aviso, não um erro.
+  const valores = parsedBarema.success ? new Map(parsedBarema.data.questoes.map(q => [q.numero, q.valorTotal])) : new Map<number, number>();
+  const completa = parsedFeedback.success && parsedBarema.success && valores.size > 0 &&
+    respostas.length === valores.size && parsedFeedback.data.questoes.length === valores.size &&
+    new Set(parsedFeedback.data.questoes.map(q => q.numero)).size === valores.size &&
+    parsedFeedback.data.questoes.every(q => valores.has(q.numero)) &&
+    respostas.every(r => valores.has(r.numero) && r.nota_final !== null && Number.isFinite(Number(r.nota_final)));
+  if (!completa || !parsedFeedback.success) {
+    console.error('Devolutiva incompleta:', { questoesBarema: valores.size, respostas: respostas.length, devolutiva: parsedFeedback.success ? parsedFeedback.data.questoes.length : 'inválida' });
+    return <main className={styles.page}>
+      <header className={styles.header}>
+        <p className={styles.eyebrow}>DEVOLUTIVA DA PROVA</p>
+        <h1>{prova.titulo}</h1>
+        <p className={styles.muted}>{aluno.nome}</p>
+      </header>
+      <section className={styles.card}>
+        <h2>Correção em revisão</h2>
+        <p>{user.papel === 'aluno'
+          ? 'Seu professor ainda está concluindo a correção de algumas questões. A nota aparece aqui assim que todas forem revisadas.'
+          : `Esta devolutiva foi liberada incompleta: ${respostas.filter(r => r.nota_final !== null).length} de ${valores.size} questões têm nota validada. Reabra a correção, valide as questões pendentes e libere de novo.`}</p>
+      </section>
+    </main>;
   }
+  const conteudo = parsedFeedback.data;
   const nota = respostas.reduce((s, r) => s + Number(r.nota_final), 0);
   const total = [...valores.values()].reduce((s, v) => s + v, 0);
 

@@ -1,5 +1,5 @@
-// Testa a chave da Featherless e o modelo com uma chamada pequena.
-// Uso: npx tsx scripts/testar-ia.ts [modelo] [imagem.png|jpg]
+﻿// Testa a chave da Featherless e o modelo com uma chamada pequena.
+// Uso: npx tsx scripts/testar-ia.mts [modelo] [imagem.png|jpg]
 //   Sem imagem: pede um JSON simples. Com imagem: pede a transcrição dela.
 import { readFileSync } from "node:fs";
 import OpenAI from "openai";

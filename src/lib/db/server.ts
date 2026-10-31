@@ -12,8 +12,9 @@ let client: SupabaseClient | null = null;
  */
 export function db(): SupabaseClient {
   if (client) return client;
-  const url = process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  // Aceita também a URL copiada com /rest/v1 no final.
+  const url = process.env.SUPABASE_URL?.trim().replace(/\/rest\/v1\/?$/, "");
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
   if (!url || !key) {
     throw new Error("Defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no .env.local");
   }

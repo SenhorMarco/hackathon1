@@ -81,7 +81,7 @@ export interface Resposta {
   submissao_id: string;
   prova_id: string;
   numero: number;
-  correcao: CorrecaoQuestao;
+  correcao: CorrecaoQuestao & { origem?: 'professor'; associacaoOriginal?: number };
   grupo_id: string | null;
   nota_final: number | null;
   comentario_final: string | null;

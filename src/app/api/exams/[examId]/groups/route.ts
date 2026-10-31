@@ -62,7 +62,7 @@ async function handlePOST(request: Request, context: { params: Promise<{ examId:
         nota_sugerida: g.notaSugerida, comentario_sugerido: g.comentarioSugerido, criterio_sugerido: g.criterioSugerido,
       }).select('id').single();
       if (insError) throw insError;
-      const { error: updError } = await db().from('respostas').update({ grupo_id: grupo.id, nota_final: null, comentario_final: null }).in('id', g.respostaIds);
+      const { error: updError } = await db().from('respostas').update({ grupo_id: grupo.id }).in('id', g.respostaIds);
       if (updError) throw updError;
     }
     return Response.json({ grupos: grupos.length, alerta }, { headers: privateHeaders });

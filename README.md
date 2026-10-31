@@ -1,119 +1,80 @@
-# Login e contas
-
-O acesso agora exige Supabase Auth. Execute a migração `supabase/contas.sql` após o schema existente e siga [a configuração de contas](docs/CONTAS.md) antes de publicar.
-
 # Aula Clara — Corretor IA
 
-Aplicação Next.js com a interface do professor, contratos de IA e estrutura de banco no mesmo projeto.
-
-## Aplicação publicada
-
-Acesse o deploy: [Aula Clara](https://hackathon1-blond.vercel.app/).
+Aplicação Next.js para apoiar professores na preparação de provas, revisão individual de respostas e consulta de resultados. A IA produz sugestões; a nota e o feedback só são considerados validados após a ação do professor.
 
 ## Executar
 
-Na raiz do repositório, com Node.js 22.18+ ou 24+:
+Use Node.js 22.18+ ou 24+ na raiz do repositório:
 
 ```bash
 npm ci
 npm run dev
 ```
 
-Abra http://localhost:3000. A interface combina dados de demonstração e localStorage com upload real de provas no Supabase. A análise da prova, o barema editável e a leitura do nome no cabeçalho usam serviços reais; a correção e a devolutiva ainda são demonstrativas. Para utilizar os módulos de servidor, configure as variáveis de `.env.example` em `.env.local`.
+Abra http://localhost:3000. Para os fluxos de servidor, configure as variáveis de `.env.example` em `.env.local` e aplique os scripts SQL descritos em [Contas](docs/CONTAS.md). O acesso às áreas de professor e aluno usa Supabase Auth.
 
 ```bash
-npm run typecheck
 npm run lint
+npm run typecheck
 npm run build
 npm start
 ```
 
+## Fluxo do professor
+
+1. Entre com uma conta de professor, crie uma turma e cadastre alunos.
+2. Envie a prova em PDF, PNG ou JPEG. A análise usa IA para identificar questões e sugerir um barema; revise os dados e confirme o barema antes da correção.
+3. Receba os arquivos das provas dos alunos pelo fluxo disponível, confira a sugestão de nome e confirme manualmente o aluno.
+4. Na revisão, confira a transcrição, a análise sugerida e o arquivo original. Ajuste a nota e escreva o feedback de cada resposta; a validação é individual. Respostas ilegíveis exigem conferência explícita do arquivo. Transcrições sem questão identificada ou duplicadas são preservadas como pendentes; associe cada uma manualmente após abrir o arquivo. A associação limpa qualquer nota sugerida e exige avaliação individual.
+5. Se uma resposta não tiver sido transcrita, o professor pode registrar sua transcrição após conferir o arquivo e selecionar a questão. Esse registro começa sem nota e não substitui respostas existentes; pendências de associação precisam ser resolvidas antes.
+6. A aplicação verifica completude por questão e por prova. Respostas ausentes, duplicadas, sem questão correspondente ou sem nota/feedback válidos impedem a preparação/liberação das devolutivas. Ausência de resposta identificada não vira nota zero automaticamente.
+7. Consulte médias e totais somente das provas completamente validadas. A exportação CSV inclui as notas por questão, total e situação; pendências aparecem como `Pendente` ou `Em revisão` e não entram na média.
+
+O agrupamento por abordagem é opcional e serve para organizar a leitura. Não aprova respostas em lote: cada resposta mantém sua própria nota e feedback. Devolutivas são geradas a partir dos dados validados, depois revisadas e aprovadas textualmente pelo professor; a publicação exige uma confirmação explícita. A geração valida um snapshot SHA-256 das notas, comentários, transcrições, referências dos arquivos, barema e análise antes de salvar; se a revisão mudar durante a geração, o texto é descartado. Edições do texto também usam controle otimista de versão.
+
+Essas verificações sequenciais não oferecem transação única entre rotas concorrentes. Uma transação no banco continua sendo trabalho futuro para eliminar essa janela de concorrência.
+
+## Estado e limites do MVP
+
+Turmas, alunos, provas, submissões, respostas e resultados do professor são persistidos no Supabase, sob controle de conta e propriedade. O bucket `provas` é privado; os links de arquivo são temporários. O localStorage mantém apenas estado auxiliar da interface e não substitui os registros do banco.
+
+Ainda não estão implementadas as regras **RN17** (invalidar/avisar quando o barema muda em relação a sugestões e notas já revisadas) e **RN19** (alteração pós-liberação atualizar a devolutiva e indicar ao aluno que houve mudança). O envio pelo próprio aluno e o gerenciamento de prazos estão em trabalho paralelo. Não trate essas regras como cobertas pelo MVP atual.
+
+## Configuração do Supabase
+
+1. Configure `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` conforme `.env.example`. A chave `service_role` é somente de servidor.
+2. Execute `supabase/schema.sql` e `supabase/contas.sql` no mesmo projeto Supabase. Configure Email Auth, confirmação de e-mail e as URLs de callback conforme [docs/CONTAS.md](docs/CONTAS.md).
+3. Para análise por IA, configure `FEATHERLESS_API_KEY` e, se necessário, `AI_MODEL` com modelo que aceite imagem.
+4. Reinicie a aplicação depois de alterar variáveis. Em produção, configure-as no ambiente Production e faça novo deployment.
+
+O endpoint `/api/health` verifica a presença das configurações, o acesso às colunas necessárias e a existência do bucket privado; não confirma por si só que a chave/modelo de IA funcionam.
+
+## Upload e análise
+
+Na aba de provas, PDF, PNG e JPEG podem ser enviados até 20 MB por arquivo. O envio da prova usa o Storage privado; a análise lê provas PDF ou imagem e sugere questões e barema. O fluxo de respostas aceita PDFs individuais ou conjuntos de imagens de um aluno. A sugestão de nome não cria associação: o professor escolhe o aluno e confirma. PDFs contendo provas de vários alunos não são separados automaticamente.
+
+O navegador envia arquivos diretamente ao bucket privado por URLs assinadas. A finalização verifica tamanho, conteúdo e vínculo antes de registrar prova/submissão. Uploads abandonados antes da finalização podem deixar objetos sem registro no bucket e exigem limpeza operacional. Para detalhes de configuração e fluxo, consulte [docs/FRONTEND.md](docs/FRONTEND.md) e [docs/CONTAS.md](docs/CONTAS.md).
+
+## Testes de integração
+
+Os scripts de integração usam serviços simulados, salvo indicação em contrário, e não enviam arquivos ou dados ao Supabase/IA reais:
+
+```bash
+node scripts/testar-revisao.mjs
+node scripts/testar-revisao-api.mjs
+node scripts/testar-revisao-browser.mjs
+node scripts/testar-pendencias.mjs
+node scripts/testar-upload.mjs
+node scripts/testar-contas.mjs
+```
+
+`testar-revisao.mjs` cobre regras de validação, completude, totalização e CSV. `testar-pendencias.mjs` cobre a preservação de transcrições sem número, desconhecidas ou duplicadas sem nota final. Os scripts `testar-revisao-api.mjs` e `testar-revisao-browser.mjs` cobrem a revisão por API e a interface com dependências simuladas. `testar-upload.mjs` cobre os fluxos de upload e análise simulados; `testar-contas.mjs` confere autenticação e autorização com Supabase simulado.
+
 ## Estrutura
 
-- `src/app/`: layout, estilos, página inicial e rotas do professor.
-- `src/components/workspace.tsx`: interface e estado da área do professor.
-- `src/lib/data.ts`: tipos, dados de demonstração e cálculos da interface.
-- `src/lib/ai/` e `src/lib/db/`: módulos de IA e banco.
-- `supabase/`: esquema SQL.
-- `scripts/`: verificações de integração e utilitário de hospedagem estática.
-- `docs/`: documentação da interface e exemplos de hospedagem.
-
-Veja [a documentação da interface](docs/FRONTEND.md), [os pontos de integração](docs/INTEGRACAO_BACKEND.md) e [os contratos de IA](CONTRATOS_IA.md).
-
-## Upload de provas
-
-1. Configure `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` em `.env.local`.
-2. Execute `supabase/schema.sql` no SQL Editor do Supabase. O script inclui as colunas `arquivo_nome` e `data_avaliacao`, inclusive para bancos existentes, e o bucket privado `provas`.
-3. Em “Nova prova”, informe título e data e selecione um PDF, PNG ou JPEG de até 20 MB. Clique em “Salvar prova”.
-4. Confira o rascunho e clique no nome do arquivo para abri-lo. Recarregue a página e repita a consulta.
-
-O envio salva a turma com um UUID estável, o arquivo no Storage e o registro em `provas`. Em seguida, clique em **Analisar prova** para extrair as questões, revisar resolução/dificuldade e obter um barema sugerido. A análise aceita imagens ou PDFs de até dez páginas, sem truncar documentos maiores. Se o registro falhar, a API tenta remover o arquivo enviado. Não há transação distribuída entre Storage e Postgres; uma falha também na remoção é registrada no servidor.
-
-O vínculo entre a turma da demonstração e seu UUID no banco fica no localStorage. As provas dessa turma são consultadas na API ao abrir a interface; limpar o localStorage perde esse vínculo local, mas não apaga os registros no Supabase. O cadastro da interface ainda é local; os alunos são sincronizados com o banco ao abrir os envios de uma prova. O barema confirmado é salvo no banco; correções e devolutivas permanecem demonstrativas.
-
-A API segue o modelo de demonstração definido no esquema: sem login, um único professor, acesso ao Supabase somente pelo servidor. O bucket privado é acessado por links assinados de 60 segundos. Autenticação e isolamento entre professores não fazem parte desta etapa.
-
-```bash
-# Após npm run build (ou npm run build -- --webpack).
-# Teste com Node.js 22.18+; Supabase simulado, sem dados reais.
-node scripts/testar-upload.mjs
-```
-
-## Upload em lote das provas dos alunos
-
-1. Execute novamente `supabase/schema.sql` para adicionar os metadados das submissões e a referência dos alunos.
-2. Cadastre os alunos na turma, crie uma prova pelo upload real e abra a aba **Respostas**.
-3. Use **Adicionar PDFs em lote** (cada PDF é uma prova completa de um aluno) ou **Adicionar uma prova em imagens** (selecione todas as páginas do mesmo aluno, na ordem). É possível adicionar vários conjuntos antes de enviar.
-4. Clique em **Enviar provas**. Os envios são sequenciais e uma falha não interrompe os demais. Provas que falharem permanecem na fila para nova tentativa; as já salvas não são reenviadas.
-5. Confira a sugestão da IA e abra os arquivos, escolha o aluno na lista e clique em **Confirmar aluno**. A lista nunca é preenchida automaticamente pela IA.
-6. Recarregue a página: os arquivos, a sugestão e o aluno confirmado são recuperados do banco. Para rever a sugestão, use **Reler cabeçalho**.
-
-São aceitos PDF, PNG e JPEG, com até 20 MB por arquivo; um conjunto de imagens admite até dez páginas e 40 MB. PDFs com provas de vários alunos não são separados automaticamente. Cada clique de seleção de imagens cria um conjunto; a primeira imagem deve conter o cabeçalho.
-
-Configure `FEATHERLESS_API_KEY` e, se necessário, `AI_MODEL` com um modelo com visão. Para PDFs, o servidor renderiza a primeira página; só sua metade superior é enviada à IA, assim como nas imagens. O processamento usa PDF.js e canvas no servidor. Os arquivos originais ficam no bucket privado. Sem chave, com PDF protegido/corrompido, nome ilegível ou falha do provedor, o upload é preservado e a seleção manual continua disponível. A chamada de IA tem timeout de 25 segundos por tentativa; uma resposta JSON inválida pode gerar uma segunda tentativa.
-
-A sugestão é guardada em `nome_lido`; a confirmação explícita é guardada separadamente em `aluno_id`. A API verifica se o aluno pertence à turma da prova. O upload não realiza correção ou divisão das respostas por questão. As provas de demonstração anteriores mantêm seu fluxo local.
-
-O teste `node scripts/testar-upload.mjs` cobre também lotes, imagens agrupadas, renderização de PDF, IA simulada, associação manual, aluno de outra turma, reenvio e limpeza após falha de banco. Ele não chama a IA nem o Supabase reais.
-
-## Fluxo completo e deploy na Vercel
-
-A devolutiva do aluno fica disponível por link único, sem login, após a liberação pelo professor. Veja [o comportamento e os testes da página do aluno](docs/pagina-aluno-link-unico.md).
-
-1. Cadastre uma turma e um aluno. Crie uma prova com PDF, PNG ou JPEG.
-2. Em **Análise prévia**, clique em **Analisar prova**. Revise enunciados, dificuldades, resolução e problemas detectados. Uma falha mantém o original para nova tentativa.
-3. Abra **Baremas**, edite critérios/pontos e clique em **Confirmar baremas**. A confirmação grava também as edições das questões no banco. Recarregue para verificar a versão salva. Alterações ainda não confirmadas são rascunhos locais.
-4. Em **Respostas**, envie os PDFs dos alunos ou conjuntos de imagens, confira a sugestão de nome e confirme o aluno na lista.
-
-O navegador envia arquivos diretamente ao bucket privado por URLs assinadas. As funções da Vercel recebem somente metadados e uma autorização temporária assinada pelo servidor; a finalização verifica tamanho, conteúdo e vínculo antes de registrar a prova/submissão. Assim, arquivos de até 20 MB não atravessam o limite de 4,5 MB do corpo de requisição das funções. A API multipart anterior continua disponível para clientes externos com arquivos pequenos, mas a interface usa o fluxo direto. Uploads abandonados antes da finalização podem deixar objetos sem registro no bucket e precisam de limpeza operacional.
-
-O barema usa controle de versão baseado no conteúdo salvo. Uma edição desatualizada recebe `409` em vez de sobrescrever a versão de outro navegador. Se necessário, a ação **Descartar rascunho e carregar versão salva** recupera explicitamente o conteúdo do servidor. Repetir a chamada de análise de uma prova já analisada preserva o barema revisado.
-
-### Configuração obrigatória de Production
-
-No projeto Vercel (preset Next.js, Build Command padrão), configure em **Settings → Environment Variables**, no ambiente **Production**:
-
-- `SUPABASE_URL`: URL do projeto Supabase.
-- `SUPABASE_SERVICE_ROLE_KEY`: chave de servidor do projeto, nunca uma variável `NEXT_PUBLIC_*`.
-- `FEATHERLESS_API_KEY`: chave da IA.
-- `AI_MODEL`: opcional; use um modelo com visão disponível na sua conta se o padrão não estiver disponível.
-
-Execute `supabase/schema.sql` atualizado no SQL Editor do **mesmo** projeto. As tabelas, as colunas adicionais e o bucket privado `provas` precisam existir. Nenhuma chave deve ser colocada no Git ou enviada pelo chat. Depois de alterar variáveis, faça um novo deployment para aplicá-las.
-
-Abra `/api/health` no domínio publicado. O endpoint não retorna chaves nem registros de alunos; verifica presença das configurações, acesso às colunas necessárias e existência do bucket privado. `status: "ok"` é pré-requisito; só uma análise real confirma que a chave/modelo de IA funcionam. `configuracao.banco: false` indica variáveis ausentes; `banco: false` com configuração presente exige conferir projeto/chave/schema; `arquivos: false` exige conferir o bucket privado. A UI não consegue funcionar com banco e arquivos indisponíveis.
-
-Os arquivos de fontes, CMaps, WASM e dependências nativas do leitor PDF são incluídos no pacote das funções pelo `outputFileTracingIncludes`. O tempo máximo da análise é configurado em 300 segundos; a leitura do cabeçalho em 120 segundos. O build padrão continua Turbopack.
-
-### Verificação dos quatro fluxos
-
-```bash
-npm run lint
-npm run typecheck
-npm run build
-node scripts/testar-workspace.mjs
-node scripts/testar-upload.mjs
-```
-
-Para incluir o navegador, instale Playwright/Chromium em um diretório de ferramentas e defina `PLAYWRIGHT_MODULE` como caminho absoluto para `playwright/index.mjs` e `PLAYWRIGHT_BROWSERS_PATH` conforme a instalação. Com essas variáveis, `node scripts/testar-upload.mjs` executa os quatro fluxos completos contra Supabase/IA simulados. A suíte testa upload direto maior que 4,5 MB, análise, confirmação/persistência do barema, conflito de edição e upload/associação das provas dos alunos.
-
-Para validar o domínio real, após configurar os serviços e publicar, use `node scripts/testar-fluxo-browser.mjs https://seu-dominio.vercel.app` com as mesmas variáveis do Playwright. Esse teste cria uma turma, um aluno e provas fictícias identificadas como validação; não apaga registros existentes. Uma compilação local ou um deployment com status de sucesso não substituem esse teste dos serviços reais.
+- `src/app/`: páginas e rotas de API.
+- `src/components/`: workspace e interface de revisão do professor.
+- `src/lib/`: autenticação, banco, análise de IA e regras de revisão.
+- `supabase/`: schema e migrações SQL.
+- `scripts/`: testes de integração e utilitário de hospedagem estática.
+- `docs/`: documentação de interface, integração e regras do produto.

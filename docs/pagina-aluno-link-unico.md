@@ -46,7 +46,9 @@ Como a página usa streaming com Suspense, um estado indisponível pode chegar c
 
 ## Validação com Supabase real
 
-As credenciais do banco não estavam configuradas localmente no início desta tarefa; o acesso administrativo à Vercel retornava 403 na auditoria anterior. Foi solicitado configurar `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` em `.env.local`, sem enviar os valores pelo chat.
+As credenciais do banco não estavam configuradas localmente no início desta tarefa; o acesso administrativo à Vercel retornava 403 na auditoria anterior. O teste aceita `.env` ou `.env.local` (este tem preferência quando existe). Na conferência seguinte, o `.env` tinha `SUPABASE_URL` preenchida, mas não era uma URL válida, e não havia chave de banco. Foi solicitado corrigir a URL e disponibilizar a chave de servidor usada pelo código, sem enviar valores pelo chat.
+
+Após a correção informada pelo usuário, a URL passou a ser válida. A chave de banco ainda não estava disponível na nova conferência; o teste de gravação real não foi iniciado sem ela.
 
 O roteiro abaixo está preparado para validar com banco real. Não exige IA nem consome créditos de IA. Cria duas provas, dois alunos e devolutivas manuais sintéticas para testar exclusivamente leitura/publicação. Esses registros **permanecem no banco**, identificados pelo prefixo `VALIDACAO_LINK_ALUNO_`; nenhum registro existente é removido.
 

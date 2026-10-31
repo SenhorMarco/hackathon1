@@ -1,17 +1,20 @@
 // Supabase real, sem IA. Cria e mantém dados sintéticos identificáveis.
-// Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY em .env.local.
+// Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY em .env ou .env.local.
 // PLAYWRIGHT_MODULE=/caminho/playwright/index.mjs node scripts/testar-pagina-aluno-real.mjs https://seu-deploy --criar-dados-sinteticos
 import assert from 'node:assert/strict';
 import { writeFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
 import { createClient } from '@supabase/supabase-js';
 
 const baseArg = process.argv[2];
 if (!baseArg || !process.argv.includes('--criar-dados-sinteticos')) throw Error('Informe a URL e --criar-dados-sinteticos. Os registros de teste serão mantidos.');
 const base = new URL(baseArg).origin;
-process.loadEnvFile('.env.local');
+process.loadEnvFile(existsSync('.env.local') ? '.env.local' : '.env');
 const url = process.env.SUPABASE_URL?.trim().replace(/\/rest\/v1\/?$/, '');
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
-if (!url || !key) throw Error('Configure as credenciais do banco em .env.local, sem compartilhá-las no chat.');
+if (!url || !key) throw Error('Configure SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY em .env ou .env.local, sem compartilhá-las no chat.');
+try { if (!['http:', 'https:'].includes(new URL(url).protocol)) throw Error(); }
+catch { throw Error('SUPABASE_URL deve ser uma URL HTTP(S) válida.'); }
 const { chromium } = await import(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const client = createClient(url, key, { auth: { persistSession: false } });
 const label = `VALIDACAO_LINK_ALUNO_${Date.now()}`;

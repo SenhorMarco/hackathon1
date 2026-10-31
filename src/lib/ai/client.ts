@@ -3,8 +3,8 @@ import OpenAI from "openai";
 
 export const FEATHERLESS_URL = "https://api.featherless.ai/v1";
 
-/** Modelo com visão usado em todas as etapas. Troque pelo AI_MODEL no .env.local. */
-export const MODELO = process.env.AI_MODEL || "Qwen/Qwen3.8-27B";
+/** Modelo com visão usado em todas as etapas. Troque pelo AI_MODEL no .env ou .env.local. */
+export const MODELO = process.env.AI_MODEL?.trim() || "moonshotai/Kimi-K2.5";
 
 let cliente: OpenAI | null = null;
 

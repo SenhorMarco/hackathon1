@@ -6,6 +6,7 @@ import * as S from "../src/lib/ai/schemas";
 const contratos = {
   AnaliseProva: S.AnaliseProva,
   ResultadoBarema: S.ResultadoBarema,
+  NomeCabecalho: S.NomeCabecalho,
   CorrecaoAluno: S.CorrecaoAluno,
   AgrupamentoQuestao: S.AgrupamentoQuestao,
   FeedbackAluno: S.FeedbackAluno,

@@ -1,6 +1,6 @@
 # Integração do backend
 
-O upload de provas está implementado no mesmo Next.js. As demais rotas deste documento continuam sendo uma proposta; os outros fluxos usam mocks.
+O upload de provas, as submissões em lote e a leitura de nomes estão implementados no mesmo Next.js. As demais rotas deste documento continuam sendo uma proposta; os outros fluxos usam mocks.
 
 ## Rotas implementadas
 
@@ -13,9 +13,24 @@ O upload de provas está implementado no mesmo Next.js. As demais rotas deste do
 
 PDF, PNG e JPEG de até 20 MB são aceitos, com validação de extensão, MIME informado e assinatura do conteúdo. Respostas inválidas usam `400`, arquivos grandes `413`, tipo de requisição incompatível `415`, registros ausentes `404` e falhas de persistência `500`, sempre com `{ error }`. Consultas e links não são armazenados em cache.
 
-Execute novamente `supabase/schema.sql` para adicionar `arquivo_nome` e `data_avaliacao` a bancos existentes. A interface guarda o UUID da turma em localStorage e consulta as provas dessa turma ao carregar. A data, o nome original e o caminho do arquivo ficam no banco. Os demais estados da interface continuam locais. Não há análise automática de documentos ou upload de barema nesta etapa.
+Execute novamente `supabase/schema.sql` para adicionar `arquivo_nome` e `data_avaliacao` a bancos existentes. A interface guarda o UUID da turma em localStorage e consulta as provas dessa turma ao carregar. A data, o nome original e o caminho do arquivo ficam no banco. Os demais estados da interface continuam locais. Há leitura do cabeçalho das submissões dos alunos; análise de questões e upload de barema continuam fora desta etapa.
 
 O acesso segue o MVP do esquema SQL, com um professor de demonstração e sem login. Os identificadores não constituem autorização; isolamento entre professores depende de uma etapa futura de autenticação.
+
+## Submissões implementadas
+
+| Método | Rota | Contrato |
+|---|---|---|
+| POST | `/api/exams/:examId/students` | Sincroniza lista `{ referencia_local, nome }[]` da turma local e retorna `{ alunos }` com UUIDs do banco |
+| GET | `/api/exams/:examId/submissions` | Retorna `{ submissoes }` da prova |
+| POST | `/api/exams/:examId/submissions` | Multipart com `id` UUID estável por envio e `arquivos`; um PDF ou até dez imagens, até 20 MB cada e 40 MB no total; retorna `{ submissao }` |
+| POST | `/api/exams/:examId/submissions/:submissionId/name` | Renderiza o cabeçalho da primeira página, consulta IA e grava apenas `nome_lido` e `nome_leitura_erro`; retorna `{ submissao }` |
+| PATCH | `/api/exams/:examId/submissions/:submissionId` | JSON `{ aluno_id }`, escolhido pelo professor; confere turma e retorna `{ submissao }` |
+| GET | `/api/exams/:examId/submissions/:submissionId/file?index=0` | Redireciona para URL assinada do arquivo na posição informada |
+
+A interface envia um conjunto por requisição e processa a fila sequencialmente. Falhas individuais ficam na fila. Repetir o mesmo UUID já salvo devolve o registro existente, sem reenviar arquivos ou alterar sua associação. Uma falha durante envio ou INSERT tenta remover os arquivos dessa tentativa; falhas também na limpeza ficam no log do servidor.
+
+A leitura pela IA é separada do upload e da confirmação. Não há associação por aproximação de nomes nem seleção automática de aluno. Falhas de leitura geram aviso persistido e não bloqueiam associação manual. Somente a metade superior da primeira página é enviada à IA. Nome ausente/ilegível pode retornar `null`. O professor pode abrir cada arquivo e reler o cabeçalho. Execute novamente o SQL para adicionar `alunos.referencia_local`, `submissoes.arquivo_nomes` e `submissoes.nome_leitura_erro`.
 
 ## Pontos exatos a substituir
 

@@ -1,6 +1,7 @@
 import 'server-only';
 import { account } from '@/lib/auth/server';
 import { db } from '@/lib/db/server';
+import { questaoDoCaminho } from './questoes';
 
 export type Conta = NonNullable<Awaited<ReturnType<typeof account>>>;
 
@@ -21,6 +22,9 @@ export interface ProvaDoAluno {
   podeEnviar: boolean;
   envio: { id: string; arquivos: string[]; enviadoEm: string } | null;
   devolutiva: string | null;
+  /** Total de questões da análise (0 enquanto o professor não analisou). */
+  questoes: number;
+  questoesEnviadas: number;
 }
 
 export interface TurmaDoAluno {
@@ -64,7 +68,7 @@ export async function carregarPortal(conta: Conta): Promise<TurmaDoAluno[]> {
   const [turmas, provas, envios] = await Promise.all([
     db().from('turmas').select('*').in('id', turmaIds),
     db().from('provas').select('*').in('turma_id', turmaIds).order('created_at', { ascending: false }),
-    db().from('submissoes').select('id, prova_id, aluno_id, status, arquivo_nomes, created_at').in('aluno_id', alunoIds).order('created_at', { ascending: false }),
+    db().from('submissoes').select('id, prova_id, aluno_id, status, arquivo_paths, arquivo_nomes, created_at').in('aluno_id', alunoIds).order('created_at', { ascending: false }),
   ]);
   for (const r of [turmas, provas, envios]) if (r.error) throw r.error;
 
@@ -97,6 +101,8 @@ export async function carregarPortal(conta: Conta): Promise<TurmaDoAluno[]> {
           id: p.id, titulo: p.titulo, data: p.data_avaliacao ?? null, prazo: typeof p.prazo_envio === 'string' ? p.prazo_envio : null,
           situacao, podeEnviar: aberta, devolutiva,
           envio: envio ? { id: envio.id, arquivos: envio.arquivo_nomes || [], enviadoEm: envio.created_at } : null,
+          questoes: Array.isArray(p.analise?.questoes) ? p.analise.questoes.length : 0,
+          questoesEnviadas: new Set(((envio?.arquivo_paths || []) as string[]).map(questaoDoCaminho).filter(n => n !== null)).size,
         };
       }),
   }));

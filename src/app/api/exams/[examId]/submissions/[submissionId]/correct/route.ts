@@ -5,7 +5,8 @@ import { logFalhaIA, motivoFalhaIA } from '@/lib/ai/erros';
 import type { CorrecaoAluno } from '@/lib/ai/schemas';
 import { ErroRevisaoIA } from '@/lib/ai/validacao';
 import { apiError, findProva, privateHeaders, serverError, uuid } from '@/lib/db/api';
-import { imagensDosArquivos } from '@/lib/db/files';
+import { questaoDoCaminho } from '@/lib/aluno/questoes';
+import { imagensComOrigem } from '@/lib/db/files';
 import { db } from '@/lib/db/server';
 import { findSubmission } from '@/lib/db/submissions';
 export const maxDuration = 300;
@@ -32,13 +33,23 @@ async function handlePOST(_request: Request, context: { params: Promise<{ examId
     let correcao: CorrecaoAluno;
     let alerta: string | null = null;
     try {
-      const imagens = await imagensDosArquivos(submissao.arquivo_paths);
+      const origens = await imagensComOrigem(submissao.arquivo_paths);
+      const imagens = origens.map(o => o.imagem);
+      const numeros = origens.map(o => questaoDoCaminho(o.path));
+      let resposta = `As imagens são as ${imagens.length} página(s) da prova respondida por um aluno, na ordem. Pré-corrija cada questão do barema.`;
+      if (numeros.some(n => n !== null)) {
+        // Envio por questão pelo portal do aluno: diz à IA a qual questão pertence cada foto.
+        const semFoto = prova.barema.questoes.map((q: { numero: number }) => q.numero).filter((n: number) => !numeros.includes(n));
+        resposta = `O aluno enviou uma foto por questão. ${numeros.map((n, i) => `Imagem ${i + 1}: questão ${n ?? 'não identificada'}`).join('; ')}. ` +
+          (semFoto.length ? `As questões ${semFoto.join(', ')} não têm foto enviada: não as trate como em branco; marque legivel false e explique que a resposta não foi enviada. ` : '') +
+          'Pré-corrija cada questão do barema usando somente a(s) imagem(ns) daquela questão.';
+      }
       correcao = await corrigirAluno({
         cliente: ia().withOptions({ timeout: 240_000, maxRetries: 1 }),
         modelo: MODELO,
         analise: prova.analise,
         barema: prova.barema,
-        resposta: `As imagens são as ${imagens.length} página(s) da prova respondida por um aluno, na ordem. Pré-corrija cada questão do barema.`,
+        resposta,
         imagens,
         maxTokens: 12000,
         semRaciocinio: true,

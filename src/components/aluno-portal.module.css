@@ -45,3 +45,12 @@
 .vazio p { margin: 0; }
 
 @media (max-width: 560px) { .provaTopo { flex-direction: column; } .turma { min-width: 0; flex: 1 1 100%; } }
+
+.voltar { justify-self: start; font-size: 13px; color: var(--olive); text-decoration: none; font-weight: 700; }
+.linkTexto { justify-self: start; padding: 0; border: 0; background: none; color: var(--olive); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.linkTexto:disabled { opacity: .5; cursor: not-allowed; }
+.enunciado { margin: 0; padding: 10px 12px; border-radius: 8px; background: #fafbf7; border: 1px solid var(--line); white-space: pre-wrap; font-size: 14px; }
+.fotos { margin: 0; padding-left: 18px; font-size: 13px; overflow-wrap: anywhere; }
+.fotos a { color: var(--olive); }
+.acoes { display: flex; flex-wrap: wrap; gap: 8px; }
+.botaoSecundario { display: inline-block; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--olive); color: var(--olive); background: var(--surface); font-weight: 700; text-decoration: none; }

@@ -18,7 +18,7 @@ export async function POST(_request: Request, context: { params: Promise<{ examI
     if (prova.analise && prova.barema) return Response.json({ prova: serializeProva(prova) }, { headers: privateHeaders });
     let result: z.infer<typeof Result>;
     try {
-      const client = ia().withOptions({ timeout: 90_000, maxRetries: 0 });
+      const client = ia().withOptions({ timeout: 240_000, maxRetries: 0 });
       const { data, error } = await db().storage.from(BUCKET_PROVAS).download(prova.arquivo_path);
       if (error || !data) throw new Error('Arquivo indisponível.');
       const mime = prova.arquivo_path.endsWith('.pdf') ? 'application/pdf' : prova.arquivo_path.endsWith('.png') ? 'image/png' : 'image/jpeg';

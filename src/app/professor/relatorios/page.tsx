@@ -1,2 +1,2 @@
-import Workspace from '@/components/workspace';
-export default function Page(){return <Workspace initialView="reports"/>}
+import ProfessorPage from '@/components/professor-page';
+export default function Page(){return <ProfessorPage view='reports'/>}

@@ -1,10 +1,11 @@
+import { professorRoute } from '@/lib/auth/server';
 import { readUpload } from '@/lib/uploads/direct';
 import { db, BUCKET_PROVAS } from '@/lib/db/server';
 import { apiError, findProva, privateHeaders, serverError, uuid } from '@/lib/db/api';
 import { findSubmission } from '@/lib/db/submissions';
 import { detectProva, MAX_PROVA_BYTES, validateProva } from '@/lib/uploads/validation';
 const MAX_TOTAL = 40 * 1024 * 1024;
-export async function GET(_request: Request, context: { params: Promise<{ examId: string }> }) {
+async function handleGET(_request: Request, context: { params: Promise<{ examId: string }> }) {
   const { examId } = await context.params;
   if (!uuid.safeParse(examId).success) return apiError('Prova inválida.', 400);
   try {
@@ -14,7 +15,7 @@ export async function GET(_request: Request, context: { params: Promise<{ examId
     return Response.json({ submissoes: data }, { headers: privateHeaders });
   } catch (error) { return serverError(error); }
 }
-export async function POST(request: Request, context: { params: Promise<{ examId: string }> }) {
+async function handlePOST(request: Request, context: { params: Promise<{ examId: string }> }) {
   const { examId } = await context.params;
   if (!uuid.safeParse(examId).success) return apiError('Prova inválida.', 400);
   if (!/^(multipart\/form-data|application\/json)/.test(request.headers.get('content-type') || '')) return apiError('Envie multipart/form-data.', 415);
@@ -70,3 +71,6 @@ export async function POST(request: Request, context: { params: Promise<{ examId
     }
   } catch (error) { return serverError(error); }
 }
+
+export const GET = professorRoute(handleGET);
+export const POST = professorRoute(handlePOST);

@@ -1,3 +1,4 @@
+import { professorRoute } from '@/lib/auth/server';
 import { ia, MODELO } from '@/lib/ai/client';
 import { corrigirAluno } from '@/lib/ai/correcao';
 import type { CorrecaoAluno } from '@/lib/ai/schemas';
@@ -13,7 +14,7 @@ export const maxDuration = 300;
  * percorre a lista em sequência, o que respeita o limite de chamadas
  * simultâneas da Featherless e o tempo máximo de uma função na Vercel.
  */
-export async function POST(_request: Request, context: { params: Promise<{ examId: string; submissionId: string }> }) {
+async function handlePOST(_request: Request, context: { params: Promise<{ examId: string; submissionId: string }> }) {
   const { examId, submissionId } = await context.params;
   if (![examId, submissionId].every(id => uuid.safeParse(id).success)) return apiError('Submissão inválida.', 400);
   try {
@@ -72,3 +73,5 @@ export async function POST(_request: Request, context: { params: Promise<{ examI
     return Response.json({ submissao: data }, { headers: privateHeaders });
   } catch (error) { return serverError(error); }
 }
+
+export const POST = professorRoute(handlePOST);

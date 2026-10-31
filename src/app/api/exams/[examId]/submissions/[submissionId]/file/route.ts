@@ -1,7 +1,8 @@
+import { professorRoute } from '@/lib/auth/server';
 import { db, BUCKET_PROVAS } from '@/lib/db/server';
 import { apiError, privateHeaders, serverError, uuid } from '@/lib/db/api';
 import { findSubmission } from '@/lib/db/submissions';
-export async function GET(request: Request, context: { params: Promise<{ examId: string; submissionId: string }> }) {
+async function handleGET(request: Request, context: { params: Promise<{ examId: string; submissionId: string }> }) {
   const { examId, submissionId } = await context.params;
   const index = Number(new URL(request.url).searchParams.get('index') || '0');
   if (![examId, submissionId].every(id => uuid.safeParse(id).success) || !Number.isInteger(index) || index < 0) return apiError('Arquivo inválido.', 400);
@@ -14,3 +15,5 @@ export async function GET(request: Request, context: { params: Promise<{ examId:
     return new Response(null, { status: 302, headers: { ...privateHeaders, Location: data.signedUrl } });
   } catch (error) { return serverError(error); }
 }
+
+export const GET = professorRoute(handleGET);

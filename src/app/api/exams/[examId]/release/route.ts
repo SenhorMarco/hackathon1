@@ -1,8 +1,9 @@
+import { professorRoute } from '@/lib/auth/server';
 import { apiError, findProva, privateHeaders, serverError, uuid } from '@/lib/db/api';
 import { db } from '@/lib/db/server';
 
 /** Libera as devolutivas: só quando todas as respostas têm nota aprovada e todo aluno tem devolutiva. */
-export async function POST(_request: Request, context: { params: Promise<{ examId: string }> }) {
+async function handlePOST(_request: Request, context: { params: Promise<{ examId: string }> }) {
   const { examId } = await context.params;
   if (!uuid.safeParse(examId).success) return apiError('Prova inválida.', 400);
   try {
@@ -27,3 +28,5 @@ export async function POST(_request: Request, context: { params: Promise<{ examI
     return Response.json({ liberadas: ids.length }, { headers: privateHeaders });
   } catch (error) { return serverError(error); }
 }
+
+export const POST = professorRoute(handlePOST);

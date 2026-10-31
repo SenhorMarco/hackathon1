@@ -1,11 +1,12 @@
 import 'server-only';
+import { account } from '@/lib/auth/server';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { z } from 'zod';
 import { BUCKET_PROVAS, db } from '@/lib/db/server';
 import { detectProva, MAX_PROVA_BYTES } from './validation';
 
 export const FileMetadata = z.object({ name: z.string().min(1).max(255), type: z.enum(['application/pdf', 'image/png', 'image/jpeg']), size: z.number().int().positive().max(MAX_PROVA_BYTES) });
-const Ticket = z.object({ id: z.uuid(), purpose: z.enum(['exam', 'submission']), examId: z.uuid().nullable(), expires: z.number(), files: z.array(FileMetadata.extend({ path: z.string() })).min(1).max(10) });
+const Ticket = z.object({ userId:z.uuid(), id: z.uuid(), purpose: z.enum(['exam', 'submission']), examId: z.uuid().nullable(), expires: z.number(), files: z.array(FileMetadata.extend({ path: z.string() })).min(1).max(10) });
 export type UploadTicket = z.infer<typeof Ticket>;
 function signature(payload: string) {
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
@@ -30,6 +31,7 @@ export async function readUpload(request: Request, purpose: UploadTicket['purpos
   if (!request.headers.get('content-type')?.startsWith('application/json')) return { form: await request.formData(), prepared: null };
   const body = await request.json();
   const prepared = verifyUpload(body.ticket, purpose, examId);
+  if(prepared.userId !== (await account())?.id)throw new Error('Upload de outra conta.');
   const form = new FormData();
   for (const [key, value] of Object.entries(body)) if (key !== 'ticket' && typeof value === 'string') form.set(key, value);
   if (purpose === 'submission') form.set('id', prepared.id);

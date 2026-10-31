@@ -1,3 +1,4 @@
+import { professorRoute } from '@/lib/auth/server';
 import { ia, MODELO } from '@/lib/ai/client';
 import { gerarFeedback } from '@/lib/ai/feedback';
 import type { CorrecaoQuestao } from '@/lib/ai/schemas';
@@ -7,7 +8,7 @@ import { findSubmission } from '@/lib/db/submissions';
 export const maxDuration = 300;
 
 /** Gera (ou refaz) a devolutiva de um aluno a partir das notas aprovadas. Não publica. */
-export async function POST(_request: Request, context: { params: Promise<{ examId: string; submissionId: string }> }) {
+async function handlePOST(_request: Request, context: { params: Promise<{ examId: string; submissionId: string }> }) {
   const { examId, submissionId } = await context.params;
   if (![examId, submissionId].every(id => uuid.safeParse(id).success)) return apiError('Submissão inválida.', 400);
   try {
@@ -38,3 +39,5 @@ export async function POST(_request: Request, context: { params: Promise<{ examI
     return Response.json({ feedback: data }, { headers: privateHeaders });
   } catch (error) { return serverError(error); }
 }
+
+export const POST = professorRoute(handlePOST);

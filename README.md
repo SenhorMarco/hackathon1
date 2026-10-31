@@ -1,3 +1,7 @@
+# Login e contas
+
+O acesso agora exige Supabase Auth. Execute a migração `supabase/contas.sql` após o schema existente e siga [a configuração de contas](docs/CONTAS.md) antes de publicar.
+
 # Aula Clara — Corretor IA
 
 Aplicação Next.js com a interface do professor, contratos de IA e estrutura de banco no mesmo projeto.

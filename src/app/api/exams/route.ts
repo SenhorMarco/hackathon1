@@ -1,3 +1,4 @@
+import { account, professorRoute } from '@/lib/auth/server';
 import { z } from 'zod';
 import { readUpload, type UploadTicket } from '@/lib/uploads/direct';
 import { serializeProva } from '@/lib/db/exams';
@@ -12,17 +13,21 @@ const fields = z.object({
   turma_nome: z.string().trim().min(1).max(40),
 });
 
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   const turmaId = new URL(request.url).searchParams.get('turma_id');
   if (!uuid.safeParse(turmaId).success) return apiError('Informe uma turma válida.', 400);
   try {
+    const user=(await account())!;
+    const {data:room,error:roomError}=await db().from('turmas').select('id').eq('id',turmaId).eq('professor_id',user.id).maybeSingle();
+    if(roomError)throw roomError;
+    if(!room)return apiError('Turma não encontrada.',404);
     const { data, error } = await db().from('provas').select('*').eq('turma_id', turmaId).order('created_at', { ascending: false });
     if (error) throw error;
     return Response.json({ provas: data.map(serializeProva) }, { headers: privateHeaders });
   } catch (error) { return serverError(error); }
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   if (!/^(multipart\/form-data|application\/json)/.test(request.headers.get('content-type') || '')) return apiError('Envie os dados como multipart/form-data.', 415);
   if (Number(request.headers.get('content-length')) > MAX_PROVA_BYTES + 1024 * 1024) return apiError('Envie um arquivo de até 20 MB.', 413);
   let form: FormData;
@@ -39,14 +44,16 @@ export async function POST(request: Request) {
   if (!mime) return apiError('O conteúdo do arquivo não corresponde a um PDF, PNG ou JPEG válido.', 400);
   try {
     const client = db();
-    const { turma_id, turma_nome, titulo, data_avaliacao } = parsed.data;
-    // O UUID da turma é estável no navegador; novos envios reutilizam a turma.
-    const { error: turmaError } = await client.from('turmas').upsert({ id: turma_id, nome: turma_nome }, { onConflict: 'id', ignoreDuplicates: true });
-    if (turmaError) throw turmaError;
+    const { turma_id, titulo, data_avaliacao } = parsed.data;
+    const user=(await account())!;
+    const {data:room,error:roomError}=await client.from('turmas').select('id').eq('id',turma_id).eq('professor_id',user.id).maybeSingle();
+    if(roomError)throw roomError;
+    if(!room)return apiError('Turma não encontrada.',404);
     const id = prepared?.id || crypto.randomUUID();
     if (prepared) {
       const { data: existing, error } = await client.from('provas').select('*').eq('id', id).maybeSingle();
       if (error) throw error;
+      if (existing && existing.turma_id !== turma_id) return apiError('Upload inválido.',403);
       if (existing) return Response.json({ prova: serializeProva(existing) }, { headers: privateHeaders });
     }
     const extension = mime === 'application/pdf' ? 'pdf' : mime === 'image/png' ? 'png' : 'jpg';
@@ -68,3 +75,6 @@ export async function POST(request: Request) {
     }
   } catch (error) { return serverError(error); }
 }
+
+export const GET = professorRoute(handleGET);
+export const POST = professorRoute(handlePOST);

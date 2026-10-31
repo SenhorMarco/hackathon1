@@ -1,5 +1,6 @@
+import { account } from '@/lib/auth/server';
 import { Suspense } from 'react';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import type { BaremaQuestao, FeedbackAluno } from '@/lib/ai/schemas';
 import { db } from '@/lib/db/server';
 import styles from './aluno.module.css';
@@ -9,11 +10,20 @@ export const metadata = { title: 'Aula Clara | Sua devolutiva', robots: { index:
 const fmt = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
 
 async function Devolutiva({ params }: { params: Promise<{ token: string }> }) {
+  const user=await account();if(!user)redirect('/login');
   const { token } = await params;
   if (!/^[0-9a-f]{32}$/.test(token)) notFound();
   const { data: feedback } = await db().from('feedbacks').select('submissao_id, conteudo, publicado').eq('token', token).maybeSingle();
   if (!feedback?.publicado) notFound();
   const { data: submissao } = await db().from('submissoes').select('prova_id, aluno_id').eq('id', feedback.submissao_id).single();
+  if(!submissao)notFound();
+  if(user.papel==='aluno'){
+    const {data:owner}=await db().from('alunos').select('id').eq('id',submissao.aluno_id).eq('email',user.email.toLowerCase()).maybeSingle();
+    if(!owner)notFound();
+  }else{
+    const {data:owner}=await db().from('provas').select('turmas!inner(professor_id)').eq('id',submissao.prova_id).eq('turmas.professor_id',user.id).maybeSingle();
+    if(!owner)notFound();
+  }
   const [{ data: prova }, { data: aluno }, { data: respostas }] = await Promise.all([
     db().from('provas').select('titulo, barema').eq('id', submissao!.prova_id).single(),
     db().from('alunos').select('nome').eq('id', submissao!.aluno_id).maybeSingle(),

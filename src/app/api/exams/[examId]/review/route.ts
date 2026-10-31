@@ -1,8 +1,9 @@
+import { professorRoute } from '@/lib/auth/server';
 import { apiError, findProva, privateHeaders, serverError, uuid } from '@/lib/db/api';
 import { db } from '@/lib/db/server';
 
 /** Tudo o que a tela de correção precisa: submissões, respostas, grupos, alunos e devolutivas. */
-export async function GET(_request: Request, context: { params: Promise<{ examId: string }> }) {
+async function handleGET(_request: Request, context: { params: Promise<{ examId: string }> }) {
   const { examId } = await context.params;
   if (!uuid.safeParse(examId).success) return apiError('Prova inválida.', 400);
   try {
@@ -24,3 +25,5 @@ export async function GET(_request: Request, context: { params: Promise<{ examId
     }, { headers: privateHeaders });
   } catch (error) { return serverError(error); }
 }
+
+export const GET = professorRoute(handleGET);

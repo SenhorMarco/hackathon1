@@ -1,8 +1,9 @@
+import { professorRoute } from '@/lib/auth/server';
 import { z } from 'zod';
 import { db } from '@/lib/db/server';
 import { apiError, findProva, privateHeaders, serverError, uuid } from '@/lib/db/api';
 const roster = z.array(z.object({ referencia_local: z.string().min(1).max(100), nome: z.string().trim().min(1).max(150) })).max(200);
-export async function POST(request: Request, context: { params: Promise<{ examId: string }> }) {
+async function handlePOST(request: Request, context: { params: Promise<{ examId: string }> }) {
   const { examId } = await context.params;
   if (!uuid.safeParse(examId).success) return apiError('Prova inválida.', 400);
   const parsed = roster.safeParse(await request.json().catch(() => null));
@@ -19,3 +20,5 @@ export async function POST(request: Request, context: { params: Promise<{ examId
     return Response.json({ alunos: data }, { headers: privateHeaders });
   } catch (error) { return serverError(error); }
 }
+
+export const POST = professorRoute(handlePOST);

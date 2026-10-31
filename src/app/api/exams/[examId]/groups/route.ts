@@ -1,3 +1,4 @@
+import { professorRoute } from '@/lib/auth/server';
 import { z } from 'zod';
 import { agruparQuestao } from '@/lib/ai/agrupamento';
 import { ia, MODELO } from '@/lib/ai/client';
@@ -10,7 +11,7 @@ export const maxDuration = 300;
 const Input = z.object({ numero: z.number().int().positive() });
 
 /** Agrupa as respostas corrigidas de uma questão. Refazer substitui os grupos anteriores. */
-export async function POST(request: Request, context: { params: Promise<{ examId: string }> }) {
+async function handlePOST(request: Request, context: { params: Promise<{ examId: string }> }) {
   const { examId } = await context.params;
   if (!uuid.safeParse(examId).success) return apiError('Prova inválida.', 400);
   const parsed = Input.safeParse(await request.json().catch(() => null));
@@ -70,3 +71,5 @@ export async function POST(request: Request, context: { params: Promise<{ examId
     return serverError(error);
   }
 }
+
+export const POST = professorRoute(handlePOST);

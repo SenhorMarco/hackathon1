@@ -27,7 +27,7 @@ function Envio({ provaId, numero, temEnvio, desabilitado, rotulo }: { provaId: s
     try {
       await enviarArquivos(provaId, arquivos, setStatus, numero);
       setArquivos([]);
-      setStatus(temEnvio ? 'Foto substituída.' : 'Enviado! Seu professor já recebeu.');
+      setStatus(temEnvio ? 'Foto substituída.' : 'Arquivo enviado.');
       router.refresh();
     } catch (e) { setStatus(''); setErro(e instanceof Error ? e.message : 'Falha no envio.'); }
     finally { setOcupado(false); }

@@ -2,7 +2,7 @@ import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { account } from '@/lib/auth/server';
 import { carregarPortal } from '@/lib/aluno/portal';
-import AccountMenu from '@/components/account-menu';
+import AlunoShell from '@/components/aluno-shell';
 import AlunoPortal from '@/components/aluno-portal';
 
 async function Content() {
@@ -10,7 +10,7 @@ async function Content() {
   if (!user) redirect('/login');
   if (user.papel !== 'aluno') redirect('/professor/dashboard');
   const turmas = await carregarPortal(user);
-  return <><AccountMenu name={user.nome} /><AlunoPortal nome={user.nome} email={user.email} turmas={turmas} /></>;
+  return <AlunoShell name={user.nome}><AlunoPortal nome={user.nome} email={user.email} turmas={turmas} /></AlunoShell>;
 }
 
 export default function Page() {

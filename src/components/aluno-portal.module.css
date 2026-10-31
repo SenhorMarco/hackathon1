@@ -1,4 +1,4 @@
-.page { max-width: 860px; margin: 0 auto; padding: 28px max(16px, env(safe-area-inset-left, 0px)) 56px; display: grid; gap: 20px; }
+.page { max-width: 1240px; margin: 0 auto; padding: 36px max(38px, env(safe-area-inset-left, 0px)) 56px; display: grid; gap: 20px; }
 .header h1 { margin: 4px 0; font-size: 28px; text-wrap: balance; }
 .eyebrow { margin: 0; font-size: 11px; letter-spacing: .08em; font-weight: 700; color: var(--olive); }
 .muted { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
@@ -11,7 +11,7 @@
 .ativa span { color: var(--olive); }
 
 .resumo { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
-.resumo div { display: grid; gap: 4px; padding: 14px 16px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); }
+.resumo div { display: grid; gap: 4px; padding: 22px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); }
 .resumo small { font-size: 10px; letter-spacing: .06em; color: var(--muted); }
 .resumo strong { font-size: 16px; }
 
@@ -19,7 +19,7 @@
 .grupo h2 { margin: 6px 0 0; font-size: 16px; display: flex; align-items: center; gap: 8px; }
 .contagem { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--line); color: var(--ink); }
 
-.prova { display: grid; gap: 10px; padding: 16px 18px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.prova { display: grid; gap: 10px; padding: 22px 24px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
 .provaTopo { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
 .provaTopo h3 { margin: 0; font-size: 15px; }
 .envio { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
@@ -54,3 +54,5 @@
 .fotos a { color: var(--olive); }
 .acoes { display: flex; flex-wrap: wrap; gap: 8px; }
 .botaoSecundario { display: inline-block; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--olive); color: var(--olive); background: var(--surface); font-weight: 700; text-decoration: none; }
+
+@media (max-width:750px) { .page { padding:24px 18px 40px; } }

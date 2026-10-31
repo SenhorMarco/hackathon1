@@ -5,6 +5,7 @@ import { connection } from 'next/server';
 import { Barema, FeedbackAluno } from '@/lib/ai/schemas';
 import { db } from '@/lib/db/server';
 import styles from './aluno.module.css';
+import AlunoShell from '@/components/aluno-shell';
 
 export const metadata = { title: 'Aula Clara | Sua devolutiva', robots: { index: false, follow: false }, referrer: 'no-referrer' };
 
@@ -57,7 +58,7 @@ async function Devolutiva({ params }: { params: Promise<{ token: string }> }) {
   const nota = respostas.reduce((s, r) => s + Number(r.nota_final), 0);
   const total = [...valores.values()].reduce((s, v) => s + v, 0);
 
-  return <main className={styles.page}>
+  return <AlunoShell name={user.nome} title="Devolutiva" professor={user.papel === 'professor'}><main className={styles.page}>
     <header className={styles.header}>
       <p className={styles.eyebrow}>DEVOLUTIVA DA PROVA</p>
       <h1>{prova?.titulo}</h1>
@@ -80,7 +81,7 @@ async function Devolutiva({ params }: { params: Promise<{ token: string }> }) {
     })}
     {conteudo.proximosPassos.length > 0 && <section className={styles.card}><h2>Próximos passos</h2><ol>{conteudo.proximosPassos.map((p, i) => <li key={i}>{p}</li>)}</ol></section>}
     <p className={styles.footer}>Correção feita pelo seu professor, com apoio de IA. Em caso de dúvida, fale com ele.</p>
-  </main>;
+  </main></AlunoShell>;
 }
 
 export default function Page({ params }: { params: Promise<{ token: string }> }) {

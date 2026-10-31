@@ -1,6 +1,21 @@
 # Integração do backend
 
-Este documento descreve pontos de integração e um contrato sugerido. Não é um backend implementado. A interface atual continua funcional com mocks até ser adaptada.
+O upload de provas está implementado no mesmo Next.js. As demais rotas deste documento continuam sendo uma proposta; os outros fluxos usam mocks.
+
+## Rotas implementadas
+
+| Método | Rota | Comportamento |
+|---|---|---|
+| POST | `/api/exams` | Multipart com `titulo`, `data_avaliacao` (AAAA-MM-DD), `turma_id` (UUID estável), `turma_nome` e `arquivo`; salva turma, arquivo e rascunho; retorna `201` com `{ prova }` |
+| GET | `/api/exams?turma_id=UUID` | Lista provas da turma, retornando `{ provas }` |
+| GET | `/api/exams/:examId` | Consulta um registro, retornando `{ prova }` |
+| GET | `/api/exams/:examId/file` | Redireciona para URL assinada do arquivo, válida por 60 segundos |
+
+PDF, PNG e JPEG de até 20 MB são aceitos, com validação de extensão, MIME informado e assinatura do conteúdo. Respostas inválidas usam `400`, arquivos grandes `413`, tipo de requisição incompatível `415`, registros ausentes `404` e falhas de persistência `500`, sempre com `{ error }`. Consultas e links não são armazenados em cache.
+
+Execute novamente `supabase/schema.sql` para adicionar `arquivo_nome` e `data_avaliacao` a bancos existentes. A interface guarda o UUID da turma em localStorage e consulta as provas dessa turma ao carregar. A data, o nome original e o caminho do arquivo ficam no banco. Os demais estados da interface continuam locais. Não há análise automática de documentos ou upload de barema nesta etapa.
+
+O acesso segue o MVP do esquema SQL, com um professor de demonstração e sem login. Os identificadores não constituem autorização; isolamento entre professores depende de uma etapa futura de autenticação.
 
 ## Pontos exatos a substituir
 
@@ -10,8 +25,8 @@ Este documento descreve pontos de integração e um contrato sugerido. Não é u
 | `src/components/workspace.tsx` / efeitos com `aula-clara-v3` | Lê e grava todo o estado no localStorage | Consultar e atualizar a API, com carregamento, erro e tentativas |
 | `patchRoom` | Atualiza uma turma no estado React | Persistir os dados na API antes de confirmar sucesso |
 | `patchExam` | Atualiza prova e invalida revisões quando critérios mudam | Atualização transacional com controle de versão do barema |
-| `CreateExam` | Guarda nome do arquivo e usa `questions()` | Enviar arquivo, iniciar extração e consultar andamento |
-| `rememberFile` / `showFile` | Criam e abrem uma URL temporária local | Enviar bytes ao armazenamento e obter URL autorizada de visualização |
+| `CreateExam` | Envia arquivo à API e cria rascunho persistido sem questões | Integrar extração e consultar andamento |
+| `rememberFile` / `showFile` | Provas persistidas abrem por URL assinada; respostas demonstrativas usam URL local | Integrar persistência dos demais arquivos |
 | `runCorrection` | Gera notas fictícias deterministicamente | Iniciar job de OCR/correção por questão e consultar resultados |
 | `release` | Verifica aprovações e marca como concluída | Validar no servidor, registrar liberação e disponibilizar devolutivas |
 | `weakTopics`, `grade`, `examMax`, `hasGrade` | Calculam relatórios no cliente | Usar dados autorizados e versionados; reproduzir cálculos no servidor |

@@ -34,6 +34,8 @@ export interface Prova {
   turma_id: string | null;
   titulo: string;
   arquivo_path: string | null;
+  arquivo_nome: string | null;
+  data_avaliacao: string | null;
   status: StatusProva;
   analise: AnaliseProva | null;
   barema: Barema | null;

@@ -74,6 +74,8 @@ O teste `node scripts/testar-upload.mjs` cobre também lotes, imagens agrupadas,
 
 ## Fluxo completo e deploy na Vercel
 
+A devolutiva do aluno fica disponível por link único, sem login, após a liberação pelo professor. Veja [o comportamento e os testes da página do aluno](docs/pagina-aluno-link-unico.md).
+
 1. Cadastre uma turma e um aluno. Crie uma prova com PDF, PNG ou JPEG.
 2. Em **Análise prévia**, clique em **Analisar prova**. Revise enunciados, dificuldades, resolução e problemas detectados. Uma falha mantém o original para nova tentativa.
 3. Abra **Baremas**, edite critérios/pontos e clique em **Confirmar baremas**. A confirmação grava também as edições das questões no banco. Recarregue para verificar a versão salva. Alterações ainda não confirmadas são rascunhos locais.

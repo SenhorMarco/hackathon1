@@ -1,4 +1,4 @@
-.page { max-width: 720px; margin: 0 auto; padding: 32px max(16px, env(safe-area-inset-left, 0px)) 48px; display: grid; gap: 16px; line-height: 1.55; }
+.page { max-width: 720px; margin: 0 auto; padding: 32px max(16px, env(safe-area-inset-left, 0px)) 48px; display: grid; gap: 16px; line-height: 1.55; overflow-wrap: anywhere; }
 .header h1 { margin: 4px 0; font-size: 26px; text-wrap: balance; }
 .eyebrow { margin: 0; font-size: 11px; letter-spacing: .08em; color: var(--olive); font-weight: 700; }
 .muted { margin: 0; color: var(--muted); }

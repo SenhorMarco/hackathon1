@@ -1,27 +1,48 @@
 import { Suspense } from 'react';
 import { notFound } from 'next/navigation';
-import type { BaremaQuestao, FeedbackAluno } from '@/lib/ai/schemas';
+import { connection } from 'next/server';
+import { Barema, FeedbackAluno } from '@/lib/ai/schemas';
 import { db } from '@/lib/db/server';
 import styles from './aluno.module.css';
 
-export const metadata = { title: 'Aula Clara | Sua devolutiva', robots: { index: false } };
+export const metadata = { title: 'Aula Clara | Sua devolutiva', robots: { index: false, follow: false }, referrer: 'no-referrer' };
 
 const fmt = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
 
 async function Devolutiva({ params }: { params: Promise<{ token: string }> }) {
+  // O link pode ser liberado ou retirado de publicação entre duas visitas.
+  await connection();
   const { token } = await params;
   if (!/^[0-9a-f]{32}$/.test(token)) notFound();
-  const { data: feedback } = await db().from('feedbacks').select('submissao_id, conteudo, publicado').eq('token', token).maybeSingle();
-  if (!feedback?.publicado) notFound();
-  const { data: submissao } = await db().from('submissoes').select('prova_id, aluno_id').eq('id', feedback.submissao_id).single();
-  const [{ data: prova }, { data: aluno }, { data: respostas }] = await Promise.all([
-    db().from('provas').select('titulo, barema').eq('id', submissao!.prova_id).single(),
-    db().from('alunos').select('nome').eq('id', submissao!.aluno_id).maybeSingle(),
+  const { data: feedback, error: feedbackError } = await db().from('feedbacks').select('submissao_id, conteudo').eq('token', token).eq('publicado', true).maybeSingle();
+  if (feedbackError) throw new Error('Não foi possível consultar a devolutiva.');
+  if (!feedback) notFound();
+  const { data: submissao, error: submissaoError } = await db().from('submissoes').select('prova_id, aluno_id').eq('id', feedback.submissao_id).maybeSingle();
+  if (submissaoError) throw new Error('Não foi possível consultar a prova do aluno.');
+  if (!submissao?.aluno_id) notFound();
+  const [provaResult, alunoResult, respostasResult] = await Promise.all([
+    db().from('provas').select('titulo, barema, status').eq('id', submissao.prova_id).maybeSingle(),
+    db().from('alunos').select('nome').eq('id', submissao.aluno_id).maybeSingle(),
     db().from('respostas').select('numero, nota_final, comentario_final').eq('submissao_id', feedback.submissao_id).order('numero'),
   ]);
-  const conteudo = feedback.conteudo as FeedbackAluno;
-  const valores = new Map<number, number>((prova?.barema?.questoes || []).map((q: BaremaQuestao) => [q.numero, q.valorTotal]));
-  const nota = (respostas || []).reduce((s, r) => s + Number(r.nota_final ?? 0), 0);
+  if ([provaResult, alunoResult, respostasResult].some(result => result.error)) throw new Error('Não foi possível carregar a correção.');
+  const { data: prova } = provaResult;
+  const { data: aluno } = alunoResult;
+  const respostas = respostasResult.data || [];
+  if (!prova || !aluno || prova.status !== 'corrigida') notFound();
+  const parsedFeedback = FeedbackAluno.safeParse(feedback.conteudo);
+  const parsedBarema = Barema.safeParse(prova.barema);
+  if (!parsedFeedback.success || !parsedBarema.success) throw new Error('A devolutiva salva está incompleta.');
+  const conteudo = parsedFeedback.data;
+  const valores = new Map(parsedBarema.data.questoes.map(q => [q.numero, q.valorTotal]));
+  // Uma nota ainda não aprovada não pode aparecer como zero para o aluno.
+  if (!valores.size || respostas.length !== valores.size || conteudo.questoes.length !== valores.size ||
+    new Set(conteudo.questoes.map(q => q.numero)).size !== valores.size ||
+    conteudo.questoes.some(q => !valores.has(q.numero)) ||
+    respostas.some(r => !valores.has(r.numero) || r.nota_final === null || !Number.isFinite(Number(r.nota_final)))) {
+    throw new Error('A correção ainda não está completa.');
+  }
+  const nota = respostas.reduce((s, r) => s + Number(r.nota_final), 0);
   const total = [...valores.values()].reduce((s, v) => s + v, 0);
 
   return <main className={styles.page}>

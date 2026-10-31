@@ -12,7 +12,7 @@ Abra http://localhost:3000. Para validar, use `npm run typecheck` e `npm run bui
 ## Arquivos e rotas
 
 - `src/app/`: layout, estilos e páginas.
-- `src/components/workspace.tsx`: interface, cadastro, upload local, revisão, relatórios e estado.
+- `src/components/workspace.tsx`: interface, cadastro, upload de provas, análise, edição de baremas, relatórios e estado.
 - `src/lib/data.ts`: tipos TypeScript, mocks e funções de pontuação.
 - `docs/INTEGRACAO_BACKEND.md`: pontos de integração e proposta de endpoints.
 
@@ -22,9 +22,9 @@ Rotas: `/`, `/professor/dashboard`, `/professor/provas`, `/professor/alunos` e `
 
 - Cadastro de turmas e alunos, provas, critérios editáveis, associação de arquivos, revisão de notas e feedback, aprovação, exportação CSV, histórico e sugestões de estudo funcionam no navegador.
 - Os registros persistem em `localStorage`, sob a chave `aula-clara-v3`, sem sincronização entre usuários.
-- Os arquivos enviados ficam na sessão em URLs de objetos. Após recarregar, os nomes permanecem, mas é necessário reenviar os arquivos para visualizá-los.
-- A análise usa quatro questões de Física de exemplo; não interpreta PDF, DOCX ou o barema anexado.
-- OCR, IA, autenticação, banco, armazenamento e entrega aos alunos ainda precisam ser conectados à interface. Os módulos de servidor existentes estão em `src/lib/ai/` e `src/lib/db/`.
+- Provas e submissões persistidas ficam no bucket privado e abrem por URLs assinadas após recarregar. Somente os arquivos do fluxo demonstrativo antigo ficam em URLs de objetos da sessão.
+- Provas criadas por upload são analisadas pela IA a partir de PDF/PNG/JPEG, com barema sugerido editável e confirmação no banco. Dados antigos da demonstração continuam usando exemplos de Física.
+- Upload, análise da prova, confirmação de baremas e envios dos alunos estão conectados ao servidor. Autenticação, correção automática e devolutivas continuam fora desses quatro fluxos. Consulte o README para configurar os serviços de Production e validar o domínio.
 - O professor consulta o histórico individual em uma janela de detalhes; não há área de aluno.
 
 ## Hospedagem estática opcional

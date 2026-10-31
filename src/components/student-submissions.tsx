@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Aluno, Submissao } from '@/lib/db/types';
 import type { Student } from '@/lib/data';
+import { uploadDirect } from '@/lib/uploads/client';
 import { validateProva } from '@/lib/uploads/validation';
 
 type Pending = { id: string; files: File[]; error?: string };
@@ -53,9 +54,8 @@ export default function StudentSubmissions({ examId, students }: { examId: strin
     for (const item of queue) {
       setActive(`Enviando ${item.files[0].name}…`);
       try {
-        const form = new FormData(); form.set('id', item.id);
-        item.files.forEach(file => form.append('arquivos', file));
-        const data = await jsonRequest(`${base}/submissions`, { method: 'POST', body: form });
+        const ticket = await uploadDirect(item.files, 'submission', examId, item.id);
+        const data = await jsonRequest(`${base}/submissions`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ticket }) });
         updateSaved(data.submissao);
         setQueue(current => current.filter(p => p.id !== item.id));
         setActive(`Lendo cabeçalho de ${item.files[0].name}…`);

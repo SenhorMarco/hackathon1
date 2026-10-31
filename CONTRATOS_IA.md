@@ -6,6 +6,8 @@ Todos os exemplos usam a mesma questão fictícia. Os números de questão são 
 
 ## 1. Análise prévia — `AnaliseProva`
 
+Implementada em `POST /api/exams/:examId/analyze`, junto com a sugestão de barema. O resultado é persistido e exibido para revisão.
+
 Saída da análise da prova para revisão do professor. `existenciaResposta.status` aceita `unica`, `multiplas`, `sem_solucao` ou `ambigua`; a dificuldade aceita `facil`, `media` ou `dificil`.
 
 ```json
@@ -25,6 +27,8 @@ Saída da análise da prova para revisão do professor. `existenciaResposta.stat
 ```
 
 ## 2. Barema — `ResultadoBarema`
+
+A análise inicial devolve `Barema` junto com `AnaliseProva`; o servidor registra a origem `sugerido`. Edições são confirmadas por `PUT /api/exams/:examId/rubric`, com validação das somas, vínculos e versão. A análise de um arquivo de barema fornecido separadamente ainda não está implementada.
 
 Saída de sugestão (`sugerido`) ou análise do barema fornecido pelo professor (`analisado`). A versão em `barema` é proposta pela IA e deve ser revisada pelo professor antes da correção. `problemas` pode ser vazio.
 

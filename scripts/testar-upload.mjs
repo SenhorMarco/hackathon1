@@ -21,18 +21,37 @@ const provider = createServer(async (req, res) => {
   const bytes = Buffer.concat(chunks);
   const raw = bytes.toString();
   res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  if (req.method === 'OPTIONS') { res.writeHead(204); res.end(); return; }
   const send = (status, body) => { res.writeHead(status); res.end(JSON.stringify(body)); };
   if (url.pathname === '/rest/v1/turmas' && req.method === 'POST') return send(201, null);
   if (url.pathname === '/rest/v1/provas' && req.method === 'POST') {
     if (failInsert) return send(500, { message: 'Falha simulada' });
-    const row = { ...JSON.parse(raw), created_at: new Date().toISOString() };
+    const row = { analise: null, barema: null, ...JSON.parse(raw), created_at: new Date().toISOString() };
     records.set(row.id, row);
     return send(201, row);
   }
-  if (url.pathname === '/rest/v1/provas' && req.method === 'GET') {
-    const id = url.searchParams.get('id')?.replace('eq.', '');
-    if (id) return send(200, [...records.values()].filter(row => row.id === id));
-    return send(200, [...records.values()].filter(row => row.turma_id === url.searchParams.get('turma_id')?.replace('eq.', '')));
+  if (url.pathname === '/rest/v1/provas' && ['GET','PATCH'].includes(req.method)) {
+    const rows = [...records.values()].filter(row => [...url.searchParams].every(([key, value]) => {
+      if (['select','order','limit'].includes(key)) return true;
+      if (value === 'is.null') return row[key] == null;
+      const expected = value.replace('eq.', '');
+      return typeof row[key] === 'object' ? JSON.stringify(row[key]) === expected : row[key] === expected;
+    }));
+    if (req.method === 'GET') return send(200, url.searchParams.get('limit') === '0' ? [] : rows);
+    for (const row of rows) Object.assign(row, JSON.parse(raw));
+    return send(200, rows[0] || null);
+  }
+  if (url.pathname === '/storage/v1/bucket/provas') return send(200, { id: 'provas', public: false });
+  if (url.pathname.startsWith('/storage/v1/object/upload/sign/provas/')) {
+    const path = url.pathname.replace('/storage/v1/object/upload/sign/provas/', '');
+    if (req.method === 'POST') return send(200, { url: `${url.pathname.replace('/storage/v1','')}?token=teste` });
+    if (req.method === 'PUT') {
+      files.set(path, { bytes, mime: req.headers['content-type'] });
+      return send(200, { Key: path });
+    }
   }
   if (url.pathname === '/rest/v1/alunos' && req.method === 'POST') {
     for (const row of JSON.parse(raw)) {
@@ -97,7 +116,9 @@ const aiMock = `const original = globalThis.fetch; globalThis.fetch = async (inp
  if (url.startsWith('https://api.featherless.ai/')) {
   const body = await new Request(input, init).json();
   if (!body.messages[1].content.some(p => p.type === 'image_url' && p.image_url.url.startsWith('data:image/png;base64,'))) throw new Error('Cabeçalho deve ser enviado como imagem PNG');
-  return Response.json({choices:[{message:{content:JSON.stringify({nomeLido:'Nome fictício de teste'})}}]});
+  const analysis = { analise: { questoes: [{ numero: 1, enunciado: 'Quanto é 2 + 3?', conteudo: 'Adição', resolucao: { passos: ['Somar 2 e 3'], respostaFinal: '5' }, existenciaResposta: {status:'unica',observacao:'A soma é determinada.'},problemasEnunciado:[],dificuldadeEstimada:'facil',justificativaDificuldade:'Adição simples.' }],observacoesGerais:'Prova legível.' }, barema:{questoes:[{numero:1,valorTotal:2,criterios:[{id:'q1-c1',descricao:'Soma corretamente',pontos:2}]}]} };
+  const value = body.messages[0].content.includes('Analise a prova enviada') ? analysis : {nomeLido:'Nome fictício de teste'};
+  return Response.json({choices:[{message:{content:JSON.stringify(value)}}]});
  }
  return original(input, init);
 };`;
@@ -224,6 +245,50 @@ try {
   assert.equal(pdfReading.nome_lido, 'Nome fictício de teste');
   const saved = (await (await fetch(`${batchBase}/submissions`)).json()).submissoes;
   assert.equal(saved.find(s => s.id === grouped.id).aluno_id, roster[0].id);
+  // Upload direto: arquivo acima do limite de payload da Vercel nunca passa pela API Next.
+  async function direct(items, purpose, examId, id) {
+    const response = await fetch(`${base}/api/uploads`, json({purpose,examId,id,files:items.map(file=>({name:file.name,type:file.type,size:file.size}))}));
+    assert.equal(response.status, 200, await response.clone().text());
+    const prepared = await response.json();
+    for (const [i,file] of items.entries()) assert.equal((await fetch(prepared.uploads[i].url,{method:'PUT',headers:{'Content-Type':file.type},body:file})).status,200);
+    return prepared.ticket;
+  }
+  const largeImage = new File([canvas.toBuffer('image/png'),new Uint8Array(5*1024*1024)],'prova-grande.png',{type:'image/png'});
+  const ticket = await direct([largeImage],'exam');
+  const metadata = {ticket,titulo:'Prova direta',data_avaliacao:'2026-10-31',turma_id:turmaId,turma_nome:'Turma de teste'};
+  assert.ok(JSON.stringify(metadata).length < 10000);
+  const createDirect = await fetch(`${base}/api/exams`,json(metadata));
+  assert.equal(createDirect.status,201,await createDirect.clone().text());
+  const directExam = (await createDirect.json()).prova;
+  assert.equal((await fetch(`${base}/api/exams`,json({...metadata,ticket:ticket+'x'}))).status,400);
+  assert.equal((await fetch(`${base}/api/exams`,json(metadata))).status,200,'Finalizar duas vezes não duplica a prova');
+  const analyze = await fetch(`${base}/api/exams/${directExam.id}/analyze`,{method:'POST'});
+  assert.equal(analyze.status,200,await analyze.clone().text());
+  const analyzed = (await analyze.json()).prova;
+  assert.equal(analyzed.analise.questoes[0].resolucao.respostaFinal,'5');
+  assert.equal(analyzed.barema.questoes[0].valorTotal,2);
+  assert.equal(analyzed.revisao.length,64);
+  const edited = structuredClone(analyzed.barema);edited.questoes[0].criterios[0].descricao='Critério editado';edited.questoes[0].criterios[0].pontos=3;edited.questoes[0].valorTotal=3;
+  const saveBody = {analise:analyzed.analise,barema:edited,revisao:analyzed.revisao};
+  const put = body => fetch(`${base}/api/exams/${directExam.id}/rubric`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const invalidRubric=structuredClone(saveBody);invalidRubric.barema.questoes[0].valorTotal=100;
+  assert.equal((await put(invalidRubric)).status,400,'Soma de pontos inconsistente é rejeitada');
+  assert.equal((await put(saveBody)).status,200);
+  assert.equal((await put(saveBody)).status,409,'Versão antiga não pode sobrescrever edição');
+  const restored=(await (await fetch(`${base}/api/exams/${directExam.id}`)).json()).prova;
+  assert.equal(restored.barema.questoes[0].criterios[0].descricao,'Critério editado');
+  assert.equal(restored.status,'barema_pronto');
+  const repeatedAnalysis=(await (await fetch(`${base}/api/exams/${directExam.id}/analyze`,{method:'POST'})).json()).prova;
+  assert.equal(repeatedAnalysis.barema.questoes[0].valorTotal,3,'Nova chamada de análise preserva barema revisado');
+  const directId=crypto.randomUUID();
+  const studentTicket=await direct([image(),image()],'submission',directExam.id,directId);
+  assert.equal((await fetch(`${base}/api/exams/${directExam.id}/submissions`,json({ticket:studentTicket}))).status,201);
+  assert.equal((await fetch(`${base}/api/exams/${examId}/submissions`,json({ticket:studentTicket}))).status,400,'Ticket é vinculado à prova correta');
+  assert.equal((await fetch(`${base}/api/health`)).status,200);
+  if (process.env.PLAYWRIGHT_MODULE) {
+    const {testBrowserFlow}=await import('./testar-fluxo-browser.mjs');
+    await testBrowserFlow(base);
+  }
   const submissionCount = submissions.size;
   const beforeBatchFailure = files.size;
   failInsert = true;
@@ -236,8 +301,8 @@ try {
   assert.equal(failure.status, 500);
   assert.ok(!(await failure.text()).includes('Falha simulada'));
   assert.equal(files.size, before, 'Falha no INSERT deve remover o arquivo');
-  assert.equal(records.size, 3);
-  console.log('Uploads validados: prova original, lote, imagens agrupadas, leitura de cabeçalho PDF/imagem, associação humana, turma, retentativa e compensação.');
+  assert.ok(records.size >= 4);
+  console.log('Uploads validados: prova original, lote, imagens agrupadas, leitura de cabeçalho PDF/imagem, upload direto >4,5 MB, análise, barema persistido e controle de versão, associação humana, turma, retentativa e compensação.');
 } catch (error) {
   console.error(output);
   throw error;

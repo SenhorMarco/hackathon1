@@ -1,4 +1,6 @@
 import { z } from 'zod';
+import { readUpload, type UploadTicket } from '@/lib/uploads/direct';
+import { serializeProva } from '@/lib/db/exams';
 import { BUCKET_PROVAS, db } from '@/lib/db/server';
 import { apiError, privateHeaders, serverError, uuid } from '@/lib/db/api';
 import { detectProva, MAX_PROVA_BYTES, validateProva } from '@/lib/uploads/validation';
@@ -16,15 +18,16 @@ export async function GET(request: Request) {
   try {
     const { data, error } = await db().from('provas').select('*').eq('turma_id', turmaId).order('created_at', { ascending: false });
     if (error) throw error;
-    return Response.json({ provas: data }, { headers: privateHeaders });
+    return Response.json({ provas: data.map(serializeProva) }, { headers: privateHeaders });
   } catch (error) { return serverError(error); }
 }
 
 export async function POST(request: Request) {
-  if (!request.headers.get('content-type')?.startsWith('multipart/form-data')) return apiError('Envie os dados como multipart/form-data.', 415);
+  if (!/^(multipart\/form-data|application\/json)/.test(request.headers.get('content-type') || '')) return apiError('Envie os dados como multipart/form-data.', 415);
   if (Number(request.headers.get('content-length')) > MAX_PROVA_BYTES + 1024 * 1024) return apiError('Envie um arquivo de até 20 MB.', 413);
   let form: FormData;
-  try { form = await request.formData(); }
+  let prepared: UploadTicket | null = null;
+  try { ({ form, prepared } = await readUpload(request, 'exam')); }
   catch { return apiError('Formulário de upload inválido.', 400); }
   const parsed = fields.safeParse(Object.fromEntries(form));
   if (!parsed.success) return apiError('Informe título, data e turma válidos.', 400);
@@ -40,17 +43,24 @@ export async function POST(request: Request) {
     // O UUID da turma é estável no navegador; novos envios reutilizam a turma.
     const { error: turmaError } = await client.from('turmas').upsert({ id: turma_id, nome: turma_nome }, { onConflict: 'id', ignoreDuplicates: true });
     if (turmaError) throw turmaError;
-    const id = crypto.randomUUID();
+    const id = prepared?.id || crypto.randomUUID();
+    if (prepared) {
+      const { data: existing, error } = await client.from('provas').select('*').eq('id', id).maybeSingle();
+      if (error) throw error;
+      if (existing) return Response.json({ prova: serializeProva(existing) }, { headers: privateHeaders });
+    }
     const extension = mime === 'application/pdf' ? 'pdf' : mime === 'image/png' ? 'png' : 'jpg';
-    const path = `${id}/original.${extension}`;
+    const path = prepared?.files[0].path || `${id}/original.${extension}`;
     const bucket = client.storage.from(BUCKET_PROVAS);
-    const { error: uploadError } = await bucket.upload(path, file, { contentType: mime, upsert: false });
-    if (uploadError) throw uploadError;
+    if (!prepared) {
+      const { error: uploadError } = await bucket.upload(path, file, { contentType: mime, upsert: false });
+      if (uploadError) throw uploadError;
+    }
     // Compensação: uma falha no INSERT não deve deixar o arquivo órfão.
     try {
       const { data, error } = await client.from('provas').insert({ id, turma_id, titulo, data_avaliacao, arquivo_nome: file.name, arquivo_path: path, status: 'rascunho' }).select('*').single();
       if (error) throw error;
-      return Response.json({ prova: data }, { status: 201, headers: privateHeaders });
+      return Response.json({ prova: serializeProva(data) }, { status: 201, headers: privateHeaders });
     } catch (error) {
       const { error: cleanupError } = await bucket.remove([path]);
       if (cleanupError) console.error('Não foi possível remover o arquivo de um upload incompleto.');

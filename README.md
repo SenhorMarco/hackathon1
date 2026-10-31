@@ -2,6 +2,10 @@
 
 Aplicação Next.js com a interface do professor, contratos de IA e estrutura de banco no mesmo projeto.
 
+## Aplicação publicada
+
+Acesse o deploy: [Aula Clara](https://hackathon1-blond.vercel.app/).
+
 ## Executar
 
 Na raiz do repositório, com Node.js 22.18+ ou 24+:

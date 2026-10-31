@@ -31,5 +31,5 @@ export default function Login() {
  <label>E-mail<input name="email" type="email" autoComplete="email" required maxLength={254}/></label>
  {mode!=='reset'&&<label>Senha<input name="password" type="password" required minLength={8} maxLength={128} autoComplete={mode==='signup'?'new-password':'current-password'}/></label>}
  {message&&<p role="status">{message}</p>}<button className="auth-primary" disabled={busy}>{busy?'Aguarde…':mode==='login'?'Entrar':mode==='signup'?'Criar conta':'Enviar instruções'}</button></form>
- <button className="auth-link" onClick={()=>{setMode(mode==='signup'?'login':'signup');setMessage('')}}>{mode==='signup'?'J? tenho uma conta':'Criar conta de aluno ou professor'}</button><button className="auth-link" onClick={()=>{setMode(mode==='reset'?'login':'reset');setMessage('')}}>{mode==='reset'?'Voltar ao login':'Esqueci minha senha'}</button></section></main>;
+ <button className="auth-link" onClick={()=>{setMode(mode==='signup'?'login':'signup');setMessage('')}}>{mode==='signup'?'Já tenho uma conta':'Criar conta de aluno ou professor'}</button><button className="auth-link" onClick={()=>{setMode(mode==='reset'?'login':'reset');setMessage('')}}>{mode==='reset'?'Voltar ao login':'Esqueci minha senha'}</button></section></main>;
 }

@@ -4,8 +4,11 @@ import { db } from '@/lib/db/server';
 
 export type Conta = NonNullable<Awaited<ReturnType<typeof account>>>;
 
-/** Uma prova recebe envios depois que o professor confirma o barema e até liberar as notas. */
-export const STATUS_RECEBE_ENVIO = ['barema_pronto', 'corrigindo'];
+/**
+ * A prova aparece para o aluno assim que o professor a envia e recebe respostas
+ * até as notas serem liberadas. A correção só começa depois do barema confirmado.
+ */
+export const STATUS_RECEBE_ENVIO = ['rascunho', 'analisada', 'barema_pronto', 'corrigindo'];
 
 export type SituacaoProva = 'aguardando_envio' | 'enviada' | 'em_correcao' | 'devolutiva' | 'encerrada' | 'prazo_encerrado';
 
@@ -80,8 +83,7 @@ export async function carregarPortal(conta: Conta): Promise<TurmaDoAluno[]> {
     turno: t.turno ?? null,
     professor: perfis.data?.find(p => p.id === t.professor_id)?.nome || 'Professor da turma',
     provas: (provas.data || [])
-      // Rascunhos e provas ainda em análise não aparecem para o aluno.
-      .filter(p => p.turma_id === t.id && (STATUS_RECEBE_ENVIO.includes(p.status) || p.status === 'corrigida'))
+      .filter(p => p.turma_id === t.id)
       .map(p => {
         const envio = envios.data?.find(e => e.prova_id === p.id);
         const devolutiva = envio ? devolutivas.data?.find(d => d.submissao_id === envio.id)?.token ?? null : null;

@@ -53,6 +53,12 @@ create table if not exists submissoes (
   created_at     timestamptz not null default now()
 );
 
+-- Metadados do upload em lote e vínculo estável com os alunos da interface.
+alter table alunos add column if not exists referencia_local text;
+create unique index if not exists alunos_turma_referencia_idx on alunos(turma_id, referencia_local);
+alter table submissoes add column if not exists arquivo_nomes text[] not null default '{}';
+alter table submissoes add column if not exists nome_leitura_erro text;
+
 -- Grupos de respostas parecidas de uma questão. O professor aprova por grupo.
 create table if not exists grupos (
   id                   uuid primary key default gen_random_uuid(),

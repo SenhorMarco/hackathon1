@@ -23,6 +23,7 @@ export interface Turma {
 }
 
 export interface Aluno {
+  referencia_local: string | null;
   id: string;
   turma_id: string;
   nome: string;
@@ -49,6 +50,8 @@ export interface Submissao {
   prova_id: string;
   aluno_id: string | null;
   arquivo_paths: string[];
+  arquivo_nomes: string[];
+  nome_leitura_erro: string | null;
   status: StatusSubmissao;
   nome_lido: string | null;
   correcao: CorrecaoAluno | null;

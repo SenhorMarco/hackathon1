@@ -139,6 +139,12 @@ export const CorrecaoQuestao = z.object({
   justificativa: z.string().describe("Justificativa da nota, para o professor"),
 });
 
+/** Leitura isolada do cabeçalho, antes da escolha do aluno pelo professor. */
+export const NomeCabecalho = z.object({
+  nomeLido: z.string().trim().min(1).max(150).nullable()
+    .describe("Nome do aluno visível no cabeçalho; null se ausente, ambíguo ou ilegível"),
+});
+
 export const CorrecaoAluno = z.object({
   nomeLido: z
     .string()
@@ -209,6 +215,7 @@ export type ResultadoBarema = z.infer<typeof ResultadoBarema>;
 export type PassoAvaliado = z.infer<typeof PassoAvaliado>;
 export type CorrecaoQuestao = z.infer<typeof CorrecaoQuestao>;
 export type CorrecaoAluno = z.infer<typeof CorrecaoAluno>;
+export type NomeCabecalho = z.infer<typeof NomeCabecalho>;
 export type GrupoRespostas = z.infer<typeof GrupoRespostas>;
 export type AgrupamentoQuestao = z.infer<typeof AgrupamentoQuestao>;
 export type ExercicioReforco = z.infer<typeof ExercicioReforco>;

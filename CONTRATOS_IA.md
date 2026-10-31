@@ -45,6 +45,10 @@ Saída de sugestão (`sugerido`) ou análise do barema fornecido pelo professor 
 
 No caso `analisado`, cada problema tem `numero`, `descricao` e `sugestao`. O backend deve conferir que `valorTotal` corresponde à soma dos pontos dos critérios antes de usar o barema; o schema atual verifica tipos, mas não essa soma.
 
+## Leitura do cabeçalho — `NomeCabecalho`
+
+A rota de leitura de nome usa esse contrato antes da correção e retorna `{ "nomeLido": null }` ou o nome transcrito (até 150 caracteres). A entrada é a metade superior da primeira página, renderizada como imagem também para PDFs. O resultado é gravado em `submissoes.nome_lido`; somente a confirmação explícita do professor define `submissoes.aluno_id`. Falhas de leitura preservam o arquivo e permitem seleção manual. Essa etapa está implementada; correção e demais etapas continuam dependendo das integrações descritas abaixo.
+
 ## 3. Correção — `CorrecaoAluno`
 
 Saída para uma submissão, com uma correção por questão. `nomeLido` pode ser `null` e é apenas sugestão: o professor confirma o aluno. `primeiroPassoErrado` usa índice começando em 1 ou `null`. `criteriosAtendidos` contém os IDs do barema revisado.
@@ -119,4 +123,4 @@ Gerar e publicar somente com base na correção revisada e nos ajustes do profes
 - O banco previsto guarda `AnaliseProva` em `provas.analise`, `Barema` em `provas.barema`, a correção completa em `submissoes.correcao`, a correção por questão em `respostas.correcao` e `FeedbackAluno` em `feedbacks.conteudo`. Grupos e seus membros são mapeados para `grupos` e `respostas.grupo_id`.
 - Todos os campos mostrados são obrigatórios no schema atual; use `null` apenas nos campos definidos como anuláveis e arrays vazios quando apropriado. O contrato de feedback descreve 1 ou 2 exercícios, mas o Zod atual não impõe essa quantidade.
 - A validação estrutural não comprova leitura correta, cálculo correto, associação ao aluno, integridade dos IDs, coerência da pontuação ou segurança da publicação. Essas verificações e a revisão humana precisam ser tratadas pelo fluxo de aplicação.
-- Para conferir a conversão dos cinco contratos em JSON Schema, instale as dependências do projeto e execute `npx tsx scripts/check-schemas.ts`.
+- Para conferir a conversão dos seis contratos em JSON Schema, instale as dependências do projeto e execute `npx tsx scripts/check-schemas.ts`.

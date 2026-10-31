@@ -1,3 +1,4 @@
+import { professorRoute } from '@/lib/auth/server';
 import { NomeCabecalho } from '@/lib/ai/schemas';
 import { db, BUCKET_PROVAS } from '@/lib/db/server';
 import { apiError, privateHeaders, serverError, uuid } from '@/lib/db/api';
@@ -6,7 +7,7 @@ import { ia, MODELO } from '@/lib/ai/client';
 import { gerarJson } from '@/lib/ai/json';
 import { headerImage } from '@/lib/uploads/header';
 export const maxDuration = 120;
-export async function POST(_request: Request, context: { params: Promise<{ examId: string; submissionId: string }> }) {
+async function handlePOST(_request: Request, context: { params: Promise<{ examId: string; submissionId: string }> }) {
   const { examId, submissionId } = await context.params;
   if (![examId, submissionId].every(id => uuid.safeParse(id).success)) return apiError('Submissão inválida.', 400);
   try {
@@ -36,3 +37,5 @@ export async function POST(_request: Request, context: { params: Promise<{ examI
     return Response.json({ submissao: data }, { headers: privateHeaders });
   } catch (error) { return serverError(error); }
 }
+
+export const POST = professorRoute(handlePOST);

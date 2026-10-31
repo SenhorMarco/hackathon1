@@ -1,5 +1,6 @@
+import { account } from '@/lib/auth/server';
 import { Suspense } from 'react';
-import { notFound } from 'next/navigation';
+import { notFound, redirect } from 'next/navigation';
 import { connection } from 'next/server';
 import { Barema, FeedbackAluno } from '@/lib/ai/schemas';
 import { db } from '@/lib/db/server';
@@ -12,6 +13,8 @@ const fmt = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 2 
 async function Devolutiva({ params }: { params: Promise<{ token: string }> }) {
   // O link pode ser liberado ou retirado de publicação entre duas visitas.
   await connection();
+  const user = await account();
+  if (!user) redirect('/login');
   const { token } = await params;
   if (!/^[0-9a-f]{32}$/.test(token)) notFound();
   const { data: feedback, error: feedbackError } = await db().from('feedbacks').select('submissao_id, conteudo').eq('token', token).eq('publicado', true).maybeSingle();
@@ -20,6 +23,15 @@ async function Devolutiva({ params }: { params: Promise<{ token: string }> }) {
   const { data: submissao, error: submissaoError } = await db().from('submissoes').select('prova_id, aluno_id').eq('id', feedback.submissao_id).maybeSingle();
   if (submissaoError) throw new Error('Não foi possível consultar a prova do aluno.');
   if (!submissao?.aluno_id) notFound();
+  if (user.papel === 'aluno') {
+    const { data: owner, error } = await db().from('alunos').select('id').eq('id', submissao.aluno_id).eq('email', user.email.toLowerCase()).maybeSingle();
+    if (error) throw error;
+    if (!owner) notFound();
+  } else {
+    const { data: owner, error } = await db().from('provas').select('turmas!inner(professor_id)').eq('id', submissao.prova_id).eq('turmas.professor_id', user.id).maybeSingle();
+    if (error) throw error;
+    if (!owner) notFound();
+  }
   const [provaResult, alunoResult, respostasResult] = await Promise.all([
     db().from('provas').select('titulo, barema, status').eq('id', submissao.prova_id).maybeSingle(),
     db().from('alunos').select('nome').eq('id', submissao.aluno_id).maybeSingle(),

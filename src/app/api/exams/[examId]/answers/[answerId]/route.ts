@@ -1,3 +1,4 @@
+import { professorRoute } from '@/lib/auth/server';
 import { z } from 'zod';
 import type { BaremaQuestao } from '@/lib/ai/schemas';
 import { apiError, findProva, privateHeaders, serverError, uuid } from '@/lib/db/api';
@@ -6,7 +7,7 @@ import { db } from '@/lib/db/server';
 const Input = z.object({ nota: z.number().min(0), comentario: z.string().max(2000) });
 
 /** Ajuste explícito do professor em uma resposta, diferente do resto do grupo. */
-export async function PATCH(request: Request, context: { params: Promise<{ examId: string; answerId: string }> }) {
+async function handlePATCH(request: Request, context: { params: Promise<{ examId: string; answerId: string }> }) {
   const { examId, answerId } = await context.params;
   if (![examId, answerId].every(id => uuid.safeParse(id).success)) return apiError('Resposta inválida.', 400);
   const parsed = Input.safeParse(await request.json().catch(() => null));
@@ -26,3 +27,5 @@ export async function PATCH(request: Request, context: { params: Promise<{ examI
     return Response.json({ resposta: data }, { headers: privateHeaders });
   } catch (error) { return serverError(error); }
 }
+
+export const PATCH = professorRoute(handlePATCH);

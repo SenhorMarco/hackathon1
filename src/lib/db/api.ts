@@ -1,4 +1,5 @@
 import 'server-only';
+import { account } from '@/lib/auth/server';
 import { z } from 'zod';
 import { db } from './server';
 
@@ -18,5 +19,9 @@ export function serverError(error: unknown) {
 export async function findProva(id: string) {
   const { data, error } = await db().from('provas').select('*').eq('id', id).maybeSingle();
   if (error) throw error;
-  return data;
+  const user=await account();
+  if(!data||!user||user.papel!=='professor')return null;
+  const {data:room,error:roomError}=await db().from('turmas').select('id').eq('id',data.turma_id).eq('professor_id',user.id).maybeSingle();
+  if(roomError)throw roomError;
+  return room?data:null;
 }

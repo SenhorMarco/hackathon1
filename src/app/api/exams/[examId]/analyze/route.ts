@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import { professorRoute } from '@/lib/auth/server';
 import { z } from 'zod';
 import { logFalhaIA, motivoFalhaIA } from '@/lib/ai/erros';
 import { normalizarNumeracao } from '@/lib/ai/normalizar';
@@ -12,7 +13,7 @@ import { apiError, findProva, privateHeaders, serverError, uuid } from '@/lib/db
 import { serializeProva } from '@/lib/db/exams';
 export const maxDuration = 300;
 const Result = z.object({ analise: AnaliseProva, barema: Barema });
-export async function POST(_request: Request, context: { params: Promise<{ examId: string }> }) {
+async function handlePOST(_request: Request, context: { params: Promise<{ examId: string }> }) {
   const { examId } = await context.params;
   if (!uuid.safeParse(examId).success) return apiError('Prova inválida.', 400);
   try {
@@ -69,3 +70,5 @@ export async function POST(_request: Request, context: { params: Promise<{ examI
     return Response.json({ prova: serializeProva(saved) }, { headers: privateHeaders });
   } catch (error) { return serverError(error); }
 }
+
+export const POST = professorRoute(handlePOST);

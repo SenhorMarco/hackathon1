@@ -1,7 +1,8 @@
+import { professorRoute } from '@/lib/auth/server';
 import { db } from '@/lib/db/server';
 import { apiError, findProva, privateHeaders, serverError, uuid } from '@/lib/db/api';
 import { findSubmission } from '@/lib/db/submissions';
-export async function PATCH(request: Request, context: { params: Promise<{ examId: string; submissionId: string }> }) {
+async function handlePATCH(request: Request, context: { params: Promise<{ examId: string; submissionId: string }> }) {
   const { examId, submissionId } = await context.params;
   const body = await request.json().catch(() => null);
   if (![examId, submissionId, body?.aluno_id].every(id => uuid.safeParse(id).success)) return apiError('Prova, submissão ou aluno inválido.', 400);
@@ -17,3 +18,5 @@ export async function PATCH(request: Request, context: { params: Promise<{ examI
     return Response.json({ submissao: data }, { headers: privateHeaders });
   } catch (error) { return serverError(error); }
 }
+
+export const PATCH = professorRoute(handlePATCH);

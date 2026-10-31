@@ -1,3 +1,4 @@
+import { professorRoute } from '@/lib/auth/server';
 import { z } from 'zod';
 import { AnaliseProva, Barema } from '@/lib/ai/schemas';
 import { validateExam } from '@/lib/ai/exam-validation';
@@ -5,7 +6,7 @@ import { db } from '@/lib/db/server';
 import { apiError, findProva, privateHeaders, serverError, uuid } from '@/lib/db/api';
 import { revisionFor, serializeProva } from '@/lib/db/exams';
 const Input = z.object({ analise: AnaliseProva, barema: Barema, revisao: z.string().length(64) });
-export async function PUT(request: Request, context: { params: Promise<{ examId: string }> }) {
+async function handlePUT(request: Request, context: { params: Promise<{ examId: string }> }) {
   const { examId } = await context.params;
   if (!uuid.safeParse(examId).success) return apiError('Prova inválida.', 400);
   const parsed = Input.safeParse(await request.json().catch(() => null));
@@ -25,3 +26,5 @@ export async function PUT(request: Request, context: { params: Promise<{ examId:
     return Response.json({ prova: serializeProva(data) }, { headers: privateHeaders });
   } catch (error) { return serverError(error); }
 }
+
+export const PUT = professorRoute(handlePUT);

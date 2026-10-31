@@ -1,3 +1,4 @@
+import { professorRoute } from '@/lib/auth/server';
 import { z } from 'zod';
 import type { BaremaQuestao } from '@/lib/ai/schemas';
 import { apiError, findProva, privateHeaders, serverError, uuid } from '@/lib/db/api';
@@ -6,7 +7,7 @@ import { db } from '@/lib/db/server';
 const Input = z.object({ nota: z.number().min(0), comentario: z.string().max(2000) });
 
 /** O professor aprova o grupo: a nota e o comentário valem para todas as respostas dele. */
-export async function PATCH(request: Request, context: { params: Promise<{ examId: string; groupId: string }> }) {
+async function handlePATCH(request: Request, context: { params: Promise<{ examId: string; groupId: string }> }) {
   const { examId, groupId } = await context.params;
   if (![examId, groupId].every(id => uuid.safeParse(id).success)) return apiError('Grupo inválido.', 400);
   const parsed = Input.safeParse(await request.json().catch(() => null));
@@ -29,3 +30,5 @@ export async function PATCH(request: Request, context: { params: Promise<{ examI
     return Response.json({ grupo: atualizado }, { headers: privateHeaders });
   } catch (error) { return serverError(error); }
 }
+
+export const PATCH = professorRoute(handlePATCH);

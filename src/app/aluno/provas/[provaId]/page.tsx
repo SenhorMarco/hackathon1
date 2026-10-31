@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation';
 import { connection } from 'next/server';
 import type { AnaliseProva, Barema } from '@/lib/ai/schemas';
 import { account } from '@/lib/auth/server';
-import { provaDoAluno } from '@/lib/aluno/portal';
+import { notaValidada, provaDoAluno } from '@/lib/aluno/portal';
 import { questaoDoCaminho } from '@/lib/aluno/questoes';
 import { db } from '@/lib/db/server';
 import AccountMenu from '@/components/account-menu';
@@ -24,20 +24,29 @@ async function Conteudo({ params }: { params: Promise<{ provaId: string }> }) {
 
   const { data: envio, error } = await db().from('submissoes').select('id, status, arquivo_paths, arquivo_nomes, created_at').eq('prova_id', provaId).eq('aluno_id', aluno.id).order('created_at', { ascending: false }).limit(1).maybeSingle();
   if (error) throw error;
-  const { data: devolutiva } = envio ? await db().from('feedbacks').select('token').eq('submissao_id', envio.id).eq('publicado', true).maybeSingle() : { data: null };
+  const [{ data: devolutiva }, { data: respostas }] = envio ? await Promise.all([
+    db().from('feedbacks').select('token').eq('submissao_id', envio.id).eq('publicado', true).maybeSingle(),
+    db().from('respostas').select('numero, nota_final, comentario_final').eq('submissao_id', envio.id),
+  ]) : [{ data: null }, { data: [] }];
 
   const paths: string[] = envio?.arquivo_paths || [];
   const nomes: string[] = envio?.arquivo_nomes || [];
   const arquivos = paths.map((path, index) => ({ index, nome: nomes[index] || `Arquivo ${index + 1}`, numero: questaoDoCaminho(path) }));
   const analise = prova.analise as AnaliseProva | null;
   const barema = prova.barema as Barema | null;
-  const questoes: QuestaoParaEnvio[] = (analise?.questoes || []).map(q => ({
-    numero: q.numero,
-    enunciado: q.enunciado,
-    conteudo: q.conteudo,
-    valor: barema?.questoes.find(b => b.numero === q.numero)?.valorTotal ?? null,
-    fotos: arquivos.filter(a => a.numero === q.numero).map(({ index, nome }) => ({ index, nome })),
-  }));
+  const questoes: QuestaoParaEnvio[] = (analise?.questoes || []).map(q => {
+    const valor = barema?.questoes.find(b => b.numero === q.numero)?.valorTotal;
+    // A nota de cada questão aparece assim que o professor a valida, antes da liberação da prova inteira.
+    const r = (respostas || []).find(x => x.numero === q.numero && notaValidada(x, valor));
+    return {
+      numero: q.numero,
+      enunciado: q.enunciado,
+      conteudo: q.conteudo,
+      valor: valor ?? null,
+      fotos: arquivos.filter(a => a.numero === q.numero).map(({ index, nome }) => ({ index, nome })),
+      correcao: r ? { nota: Number(r.nota_final), comentario: r.comentario_final! } : null,
+    };
+  });
 
   return <>
     <AccountMenu name={user.nome} />

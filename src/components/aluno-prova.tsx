@@ -7,7 +7,11 @@ import { PROVA_ACCEPT } from '@/lib/uploads/validation';
 import styles from './aluno-portal.module.css';
 
 type Arquivo = { index: number; nome: string };
-export type QuestaoParaEnvio = { numero: number; enunciado: string; conteudo: string; valor: number | null; fotos: Arquivo[] };
+export type QuestaoParaEnvio = {
+  numero: number; enunciado: string; conteudo: string; valor: number | null; fotos: Arquivo[];
+  /** Nota e comentário validados pelo professor, visíveis assim que a questão é corrigida. */
+  correcao: { nota: number; comentario: string } | null;
+};
 
 const fmt = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
 const quando = (iso: string | null, hora = false) => iso ? new Date(iso.length === 10 ? `${iso}T12:00:00` : iso)
@@ -66,8 +70,14 @@ function CartaoQuestao({ provaId, questao, aceitaEnvio }: { provaId: string; que
         <h3>Questão {questao.numero}{questao.valor !== null && <span className={styles.muted}> · {fmt(questao.valor)} pt</span>}</h3>
         <p className={styles.muted}>{questao.conteudo}</p>
       </div>
-      <span className={`${styles.badge} ${enviada ? styles.green : styles.amber}`}>{enviada ? `${questao.fotos.length} foto${questao.fotos.length > 1 ? 's' : ''}` : 'Sem foto'}</span>
+      {questao.correcao
+        ? <span className={`${styles.badge} ${styles.green}`}>Corrigida</span>
+        : <span className={`${styles.badge} ${enviada ? styles.green : styles.amber}`}>{enviada ? `${questao.fotos.length} foto${questao.fotos.length > 1 ? 's' : ''}` : 'Sem foto'}</span>}
     </div>
+    {questao.correcao && <div className={styles.nota}>
+      <strong>{fmt(questao.correcao.nota)}{questao.valor !== null && <span> / {fmt(questao.valor)}</span>}</strong>
+      <p><b>Comentário do professor:</b> {questao.correcao.comentario}</p>
+    </div>}
     <button className={styles.linkTexto} onClick={() => setAberta(!aberta)}>{aberta ? 'Ocultar enunciado' : 'Ver enunciado'}</button>
     {aberta && <p className={styles.enunciado}>{questao.enunciado}</p>}
     {enviada && <ul className={styles.fotos}>{questao.fotos.map(f => <li key={f.index}>
@@ -89,6 +99,9 @@ export default function AlunoProva({ prova, aceitaEnvio, questoes, arquivosIntei
 }) {
   const respondidas = questoes.filter(q => q.fotos.length).length;
   const total = questoes.reduce((s, q) => s + (q.valor ?? 0), 0);
+  const corrigidas = questoes.filter(q => q.correcao);
+  const pontos = corrigidas.reduce((s, q) => s + q.correcao!.nota, 0);
+  const possiveis = corrigidas.reduce((s, q) => s + (q.valor ?? 0), 0);
 
   return <main className={styles.page}>
     <Link href="/aluno" className={styles.voltar}>← Minhas provas</Link>
@@ -110,7 +123,10 @@ export default function AlunoProva({ prova, aceitaEnvio, questoes, arquivosIntei
       <section className={styles.resumo}>
         <div><small>QUESTÕES COM FOTO</small><strong>{respondidas} de {questoes.length}</strong></div>
         <div><small>SITUAÇÃO</small><strong>{devolutiva ? 'Corrigida' : emCorrecao ? 'Em correção' : respondidas === questoes.length ? 'Tudo enviado' : respondidas ? 'Envio parcial' : 'Envio pendente'}</strong></div>
+        <div><small>QUESTÕES CORRIGIDAS</small><strong>{corrigidas.length} de {questoes.length}</strong></div>
+        <div><small>{corrigidas.length === questoes.length ? 'NOTA' : 'NOTA ATÉ AGORA'}</small><strong>{corrigidas.length ? `${fmt(pontos)} / ${fmt(possiveis)}` : '—'}</strong></div>
       </section>
+      {corrigidas.length > 0 && corrigidas.length < questoes.length && <p className={styles.muted}>O professor está corrigindo questão por questão. A nota até agora considera só as questões já corrigidas.</p>}
       {arquivosInteiros.length > 0 && <p className={styles.muted}>Você tinha enviado a prova inteira ({arquivosInteiros.map(a => a.nome).join(', ')}). Ao enviar a foto de uma questão, esse envio é substituído pelas fotos por questão.</p>}
       <section className={styles.grupo}>
         <h2>Envie a foto de cada resposta <span className={styles.contagem}>{questoes.length}</span></h2>

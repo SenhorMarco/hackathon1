@@ -25,6 +25,16 @@ export interface ProvaDoAluno {
   /** Total de questões da análise (0 enquanto o professor não analisou). */
   questoes: number;
   questoesEnviadas: number;
+  /** Questões com nota e comentário já validados pelo professor (visíveis ao aluno questão a questão). */
+  corrigidas: number;
+  pontos: number;
+  pontosPossiveis: number;
+}
+
+/** Uma questão aparece para o aluno quando o professor salvou nota e comentário. */
+export function notaValidada(r: { numero: number; nota_final: number | string | null; comentario_final: string | null }, valor: number | undefined) {
+  return valor !== undefined && r.numero > 0 && r.nota_final !== null && Number.isFinite(Number(r.nota_final)) &&
+    Number(r.nota_final) >= 0 && Number(r.nota_final) <= valor && !!r.comentario_final?.trim();
 }
 
 export interface TurmaDoAluno {
@@ -74,11 +84,12 @@ export async function carregarPortal(conta: Conta): Promise<TurmaDoAluno[]> {
 
   const professorIds = [...new Set((turmas.data || []).map(t => t.professor_id).filter(Boolean))];
   const envioIds = (envios.data || []).map(e => e.id);
-  const [perfis, devolutivas] = await Promise.all([
+  const [perfis, devolutivas, respostas] = await Promise.all([
     professorIds.length ? db().from('perfis').select('id, nome').in('id', professorIds) : Promise.resolve({ data: [], error: null }),
     envioIds.length ? db().from('feedbacks').select('submissao_id, token').in('submissao_id', envioIds).eq('publicado', true) : Promise.resolve({ data: [], error: null }),
+    envioIds.length ? db().from('respostas').select('submissao_id, numero, nota_final, comentario_final').in('submissao_id', envioIds) : Promise.resolve({ data: [], error: null }),
   ]);
-  for (const r of [perfis, devolutivas]) if (r.error) throw r.error;
+  for (const r of [perfis, devolutivas, respostas]) if (r.error) throw r.error;
 
   return (turmas.data || []).map(t => ({
     id: t.id,
@@ -92,6 +103,8 @@ export async function carregarPortal(conta: Conta): Promise<TurmaDoAluno[]> {
         const envio = envios.data?.find(e => e.prova_id === p.id);
         const devolutiva = envio ? devolutivas.data?.find(d => d.submissao_id === envio.id)?.token ?? null : null;
         const aberta = STATUS_RECEBE_ENVIO.includes(p.status) && prazoAberto(p);
+        const valores = new Map<number, number>((p.barema?.questoes || []).map((q: { numero: number; valorTotal: number }) => [q.numero, q.valorTotal]));
+        const validadas = envio ? (respostas.data || []).filter(r => r.submissao_id === envio.id && notaValidada(r, valores.get(r.numero))) : [];
         const situacao: SituacaoProva = devolutiva ? 'devolutiva'
           : p.status === 'corrigida' ? 'encerrada'
           : envio && ['corrigindo', 'corrigida'].includes(envio.status) ? 'em_correcao'
@@ -103,6 +116,9 @@ export async function carregarPortal(conta: Conta): Promise<TurmaDoAluno[]> {
           envio: envio ? { id: envio.id, arquivos: envio.arquivo_nomes || [], enviadoEm: envio.created_at } : null,
           questoes: Array.isArray(p.analise?.questoes) ? p.analise.questoes.length : 0,
           questoesEnviadas: new Set(((envio?.arquivo_paths || []) as string[]).map(questaoDoCaminho).filter(n => n !== null)).size,
+          corrigidas: validadas.length,
+          pontos: validadas.reduce((s, r) => s + Number(r.nota_final), 0),
+          pontosPossiveis: validadas.reduce((s, r) => s + (valores.get(r.numero) ?? 0), 0),
         };
       }),
   }));

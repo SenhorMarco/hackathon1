@@ -54,3 +54,7 @@
 .fotos a { color: var(--olive); }
 .acoes { display: flex; flex-wrap: wrap; gap: 8px; }
 .botaoSecundario { display: inline-block; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--olive); color: var(--olive); background: var(--surface); font-weight: 700; text-decoration: none; }
+.nota { display: grid; gap: 4px; padding: 12px 14px; border-radius: 8px; background: var(--lime); color: var(--ink); }
+.nota strong { font-size: 20px; color: var(--olive); }
+.nota strong span { font-size: 14px; font-weight: 600; }
+.nota p { margin: 0; font-size: 14px; }

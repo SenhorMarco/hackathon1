@@ -13,6 +13,8 @@ const situacoes: Record<SituacaoProva, { rotulo: string; tom: string }> = {
   prazo_encerrado: { rotulo: 'Prazo encerrado', tom: styles.neutral },
 };
 
+const fmt = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+
 const data = (iso: string | null, comHora = false) => {
   if (!iso) return null;
   const d = new Date(iso.length === 10 ? `${iso}T12:00:00` : iso);
@@ -34,6 +36,10 @@ function CartaoProva({ prova }: { prova: ProvaDoAluno }) {
       </div>
       <span className={`${styles.badge} ${s.tom}`}>{s.rotulo}</span>
     </div>
+    {prova.corrigidas > 0 && <div className={styles.nota}>
+      <strong>{fmt(prova.pontos)}<span> / {fmt(prova.pontosPossiveis)}</span></strong>
+      <p>{prova.questoes && prova.corrigidas < prova.questoes ? `${prova.corrigidas} de ${prova.questoes} questões corrigidas até agora. Abra a prova para ver a nota e o comentário de cada uma.` : 'Todas as questões corrigidas. Abra a prova para ver a nota e o comentário de cada uma.'}</p>
+    </div>}
     {prova.envio && !prova.questoes && <p className={styles.envio}>Você enviou {prova.envio.arquivos.join(", ") || "sua prova"} em {data(prova.envio.enviadoEm, true)}.</p>}
     <div className={styles.acoes}>
       {prova.devolutiva && <Link className={styles.botao} href={`/aluno/${prova.devolutiva}`}>Ver minha nota e devolutiva</Link>}

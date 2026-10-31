@@ -35,6 +35,10 @@ create table if not exists provas (
   created_at        timestamptz not null default now()
 );
 
+-- Compatível também com bancos que já executaram a versão anterior do esquema.
+alter table provas add column if not exists arquivo_nome text;
+alter table provas add column if not exists data_avaliacao date;
+
 -- Uma submissão = a prova respondida por um aluno (uma ou mais páginas).
 create table if not exists submissoes (
   id             uuid primary key default gen_random_uuid(),

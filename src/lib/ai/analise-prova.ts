@@ -11,6 +11,7 @@ Para cada questão identificável:
 - Preserve o número original e transcreva fielmente o enunciado. Indique no próprio enunciado qualquer trecho ilegível ou ausente, sem completá-lo por suposição.
 - Identifique o conteúdo e apresente uma resolução de referência passo a passo, verificando as contas e as condições de validade. Se houver mais de uma leitura ou solução, explicite as possibilidades relevantes; não apresente uma hipótese como fato.
 - Em existenciaResposta, use unica quando houver uma única resposta bem definida; multiplas quando houver mais de uma resposta válida; sem_solucao somente quando os dados forem suficientes para demonstrar que não há solução; e ambigua quando leituras diferentes ou dados insuficientes impedirem uma conclusão segura. Explique a escolha em observacao. Dados ausentes ou ilegíveis não provam ausência de solução.
+- Não invente leituras alternativas para preencher a observação. Se a equação é bem definida e tem solução única, explique diretamente por que ela é única, sem mencionar ambiguidades inexistentes.
 - Liste em problemasEnunciado os dados faltantes, ambiguidades, contradições ou limitações de leitura que afetem a resolução. Se não houver problema identificado, use uma lista vazia. Se faltar informação, descreva nos passos e na resposta final o que não é possível concluir, sem inventar valores.
 - Estime a dificuldade como facil, media ou dificil e justifique brevemente; apresente-a como estimativa, não como medida observada.
 

@@ -1,0 +1,241 @@
+{
+  "modelo": "Qwen/Qwen2.5-72B-Instruct",
+  "dados": "sintéticos; execução única por caso, sem estimativa de acurácia",
+  "maxTokensSaida": 2000,
+  "chamadas": 6,
+  "custoInformadoUSD": 0.00311063,
+  "resultados": [
+    {
+      "nome": "barema-coerente-sem-falso-problema",
+      "aprovado": true,
+      "resultado": {
+        "origem": "analisado",
+        "barema": {
+          "questoes": [
+            {
+              "numero": 1,
+              "valorTotal": 2,
+              "criterios": [
+                {
+                  "id": "q1-c1",
+                  "descricao": "Isola 3x=12 corretamente.",
+                  "pontos": 1
+                },
+                {
+                  "id": "q1-c2",
+                  "descricao": "Encontra x=4 corretamente.",
+                  "pontos": 1
+                }
+              ]
+            }
+          ]
+        },
+        "problemas": []
+      },
+      "usos": [
+        {
+          "prompt_tokens": 1119,
+          "completion_tokens": 140,
+          "total_tokens": 1259,
+          "cost": 0.00047003,
+          "cached_tokens": 0,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          }
+        }
+      ]
+    },
+    {
+      "nome": "barema-sugerido-com-pontuacao-explicita",
+      "aprovado": true,
+      "resultado": {
+        "origem": "sugerido",
+        "barema": {
+          "questoes": [
+            {
+              "numero": 1,
+              "valorTotal": 2,
+              "criterios": [
+                {
+                  "id": "q1-c1",
+                  "descricao": "Isolar 3x=12",
+                  "pontos": 1
+                },
+                {
+                  "id": "q1-c2",
+                  "descricao": "Obter x=4",
+                  "pontos": 1
+                }
+              ]
+            }
+          ]
+        },
+        "problemas": []
+      },
+      "usos": [
+        {
+          "prompt_tokens": 1051,
+          "completion_tokens": 134,
+          "total_tokens": 1185,
+          "cost": 0.00044247,
+          "cached_tokens": 0,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          }
+        }
+      ]
+    },
+    {
+      "nome": "correcao-correta",
+      "aprovado": true,
+      "resultado": {
+        "nomeLido": null,
+        "questoes": [
+          {
+            "numero": 1,
+            "transcricao": "3x=12; x=4.",
+            "legivel": true,
+            "passos": [
+              {
+                "descricao": "3x=12",
+                "correto": true,
+                "comentario": "Isolou 3x corretamente."
+              },
+              {
+                "descricao": "x=4",
+                "correto": true,
+                "comentario": "Encontrou x corretamente."
+              }
+            ],
+            "metodo": "padrao",
+            "descricaoMetodo": "Método padrão de isolamento e resolução.",
+            "tipoErro": "nenhum",
+            "primeiroPassoErrado": null,
+            "criteriosAtendidos": [
+              "q1-c1",
+              "q1-c2"
+            ],
+            "notaSugerida": 2,
+            "justificativa": "O aluno isolou 3x=12 corretamente e encontrou x=4 corretamente, atendendo a ambos os critérios do barema."
+          }
+        ]
+      },
+      "usos": [
+        {
+          "prompt_tokens": 1669,
+          "completion_tokens": 263,
+          "total_tokens": 1932,
+          "cost": 0.00072273,
+          "cached_tokens": 0,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          }
+        }
+      ]
+    },
+    {
+      "nome": "correcao-parcial",
+      "aprovado": true,
+      "resultado": {
+        "nomeLido": null,
+        "questoes": [
+          {
+            "numero": 1,
+            "transcricao": "3x=12; x=12.",
+            "legivel": true,
+            "passos": [
+              {
+                "descricao": "3x=12",
+                "correto": true,
+                "comentario": "Isolou 3x corretamente."
+              },
+              {
+                "descricao": "x=12",
+                "correto": false,
+                "comentario": "Erro de cálculo ao dividir 12 por 3."
+              }
+            ],
+            "metodo": "padrao",
+            "descricaoMetodo": "Seguiu o método padrão de isolamento e divisão.",
+            "tipoErro": "calculo",
+            "primeiroPassoErrado": 2,
+            "criteriosAtendidos": [
+              "q1-c1"
+            ],
+            "notaSugerida": 1,
+            "justificativa": "O aluno isolou 3x corretamente, mas cometeu um erro de cálculo ao encontrar x. Apenas o critério q1-c1 foi atendido."
+          }
+        ]
+      },
+      "usos": [
+        {
+          "prompt_tokens": 1670,
+          "completion_tokens": 272,
+          "total_tokens": 1942,
+          "cost": 0.0007267,
+          "cached_tokens": 0,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          }
+        }
+      ]
+    },
+    {
+      "nome": "correcao-sem-criterios-atendidos",
+      "aprovado": true,
+      "resultado": {
+        "nomeLido": null,
+        "questoes": [
+          {
+            "numero": 1,
+            "transcricao": "3x=16; x=16.",
+            "legivel": true,
+            "passos": [
+              {
+                "descricao": "3x=16",
+                "correto": false,
+                "comentario": "O aluno isolou 3x, mas o valor 16 está incorreto. Deveria ser 3x=12."
+              },
+              {
+                "descricao": "x=16",
+                "correto": false,
+                "comentario": "O aluno dividiu 16 por 3, mas o valor 16 está incorreto. Deveria ser x=4."
+              }
+            ],
+            "metodo": "padrao",
+            "descricaoMetodo": "Método padrão de isolamento e divisão.",
+            "tipoErro": "calculo",
+            "primeiroPassoErrado": 1,
+            "criteriosAtendidos": [],
+            "notaSugerida": 0,
+            "justificativa": "O aluno cometeu um erro de cálculo no primeiro passo, isolando 3x=16 em vez de 3x=12. Como o primeiro passo está errado, o segundo passo também está incorreto. Nenhum critério do barema foi atendido."
+          }
+        ]
+      },
+      "usos": [
+        {
+          "prompt_tokens": 1670,
+          "completion_tokens": 327,
+          "total_tokens": 1997,
+          "cost": 0.0007487,
+          "cached_tokens": 0,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          }
+        }
+      ]
+    },
+    {
+      "nome": "correcao-metodo-alternativo-valido",
+      "aprovado": false,
+      "erro": "Request timed out.",
+      "respostas": [],
+      "usos": []
+    },
+    {
+      "nome": "analise-dados-insuficientes",
+      "executado": false,
+      "motivo": "Execução interrompida após falha da API"
+    }
+  ]
+}

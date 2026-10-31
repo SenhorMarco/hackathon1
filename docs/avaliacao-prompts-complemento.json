@@ -1,0 +1,101 @@
+{
+  "modelo": "Qwen/Qwen2.5-32B-Instruct",
+  "dados": "sintéticos; execução única por caso, sem estimativa de acurácia",
+  "maxTokensSaida": 2000,
+  "chamadas": 2,
+  "custoInformadoUSD": 0.0027597999999999998,
+  "resultados": [
+    {
+      "nome": "correcao-metodo-alternativo-valido",
+      "aprovado": true,
+      "resultado": {
+        "nomeLido": null,
+        "questoes": [
+          {
+            "numero": 1,
+            "transcricao": "x²-5x+6=(x-2)(x-3)=0; x=2 ou x=3.",
+            "legivel": true,
+            "passos": [
+              {
+                "descricao": "Fatora a equação quadrática x²-5x+6 como (x-2)(x-3).",
+                "correto": true,
+                "comentario": "A fatoração é correta."
+              },
+              {
+                "descricao": "Determina as raízes x=2 e x=3.",
+                "correto": true,
+                "comentario": "As raízes são corretas."
+              }
+            ],
+            "metodo": "alternativo",
+            "descricaoMetodo": "Fatoração direta em vez de usar a fórmula de Bhaskara.",
+            "tipoErro": "nenhum",
+            "primeiroPassoErrado": null,
+            "criteriosAtendidos": [
+              "q1-c1",
+              "q1-c2"
+            ],
+            "notaSugerida": 2,
+            "justificativa": "O aluno utilizou um método alternativo válido para resolver a equação quadrática e obteve as duas raízes corretas."
+          }
+        ]
+      },
+      "usos": [
+        {
+          "prompt_tokens": 1731,
+          "completion_tokens": 307,
+          "total_tokens": 2038,
+          "cost": 0.00154548,
+          "cached_tokens": 0,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          }
+        }
+      ]
+    },
+    {
+      "nome": "analise-dados-insuficientes",
+      "aprovado": true,
+      "resultado": {
+        "questoes": [
+          {
+            "numero": 1,
+            "enunciado": "Um retângulo tem área de 12 cm². Determine seu perímetro.",
+            "conteudo": "Área e perímetro de um retângulo",
+            "resolucao": {
+              "passos": [
+                "A área de um retângulo é dada pela fórmula A = l * w, onde l é o comprimento e w é a largura.",
+                "Sabemos que a área é 12 cm², então temos a equação l * w = 12.",
+                "O perímetro de um retângulo é dado pela fórmula P = 2(l + w).",
+                "Sem informações adicionais sobre l ou w, não podemos determinar valores únicos para l e w."
+              ],
+              "respostaFinal": "O perímetro não pode ser determinado com os dados fornecidos."
+            },
+            "existenciaResposta": {
+              "status": "ambigua",
+              "observacao": "Os dados fornecidos não são suficientes para determinar valores únicos para o comprimento e a largura do retângulo, portanto, não é possível calcular um valor único para o perímetro."
+            },
+            "problemasEnunciado": [
+              "Falta informação sobre o comprimento ou a largura do retângulo."
+            ],
+            "dificuldadeEstimada": "facil",
+            "justificativaDificuldade": "A questão envolve conceitos básicos de geometria, mas a falta de dados específicos torna a solução impossível."
+          }
+        ],
+        "observacoesGerais": "A primeira questão apresenta uma situação em que os dados fornecidos não são suficientes para determinar uma resposta única. O professor pode considerar adicionar mais informações ao enunciado para tornar a questão solucionável."
+      },
+      "usos": [
+        {
+          "prompt_tokens": 1034,
+          "completion_tokens": 426,
+          "total_tokens": 1460,
+          "cost": 0.00121432,
+          "cached_tokens": 0,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          }
+        }
+      ]
+    }
+  ]
+}

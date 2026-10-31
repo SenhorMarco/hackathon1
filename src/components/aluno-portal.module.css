@@ -1,0 +1,47 @@
+.page { max-width: 860px; margin: 0 auto; padding: 28px max(16px, env(safe-area-inset-left, 0px)) 56px; display: grid; gap: 20px; }
+.header h1 { margin: 4px 0; font-size: 28px; text-wrap: balance; }
+.eyebrow { margin: 0; font-size: 11px; letter-spacing: .08em; font-weight: 700; color: var(--olive); }
+.muted { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+
+.turmas { display: flex; flex-wrap: wrap; gap: 10px; }
+.turma { display: grid; gap: 4px; text-align: left; min-width: 180px; padding: 14px 16px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; }
+.turma span { color: var(--muted); font-size: 12px; }
+.turma:hover { border-color: var(--olive); }
+.ativa { border-color: var(--olive); background: var(--lime); }
+.ativa span { color: var(--olive); }
+
+.resumo { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+.resumo div { display: grid; gap: 4px; padding: 14px 16px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); }
+.resumo small { font-size: 10px; letter-spacing: .06em; color: var(--muted); }
+.resumo strong { font-size: 16px; }
+
+.grupo { display: grid; gap: 10px; }
+.grupo h2 { margin: 6px 0 0; font-size: 16px; display: flex; align-items: center; gap: 8px; }
+.contagem { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--line); color: var(--ink); }
+
+.prova { display: grid; gap: 10px; padding: 16px 18px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.provaTopo { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.provaTopo h3 { margin: 0; font-size: 15px; }
+.envio { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+
+.badge { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+.green { background: var(--lime); color: var(--olive); }
+.amber { background: #f8eedc; color: #8a6224; }
+.purple { background: #f1edf6; color: #6e5a82; }
+.neutral { background: var(--line); color: var(--muted); }
+
+.upload { display: grid; gap: 8px; }
+.arquivo { position: relative; display: grid; gap: 4px; padding: 14px; border: 1.5px dashed #c9d3bf; border-radius: 8px; cursor: pointer; background: #fafbf7; overflow-wrap: anywhere; }
+.arquivo input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.arquivo small { color: var(--muted); font-size: 12px; }
+.arquivo:focus-within { outline: 2px solid var(--olive); outline-offset: 2px; }
+.botao { justify-self: start; display: inline-block; padding: 9px 16px; border-radius: 8px; border: 0; background: var(--olive); color: #fff; font-weight: 700; text-decoration: none; cursor: pointer; }
+.botao:disabled { opacity: .5; cursor: not-allowed; }
+
+.ok { margin: 0; font-size: 13px; color: var(--olive); }
+.erro { margin: 0; font-size: 13px; color: #a3412f; }
+.vazio { padding: 22px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); }
+.vazio h2 { margin: 0 0 6px; font-size: 16px; }
+.vazio p { margin: 0; }
+
+@media (max-width: 560px) { .provaTopo { flex-direction: column; } .turma { min-width: 0; flex: 1 1 100%; } }

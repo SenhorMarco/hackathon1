@@ -14,7 +14,8 @@ const tabelas = ["turmas", "alunos", "provas", "submissoes", "grupos", "resposta
 let falhas = 0;
 
 for (const tabela of tabelas) {
-  const { count, error } = await supabase.from(tabela).select("*", { count: "exact", head: true });
+  // GET em vez de HEAD: no HEAD, uma tabela inexistente não chega como erro.
+  const { count, error } = await supabase.from(tabela).select("id", { count: "exact" }).limit(1);
   if (error) {
     falhas++;
     console.log(`✗ ${tabela}: ${error.message}`);

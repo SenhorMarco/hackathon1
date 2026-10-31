@@ -31,7 +31,7 @@
 .neutral { background: var(--line); color: var(--muted); }
 
 .upload { display: grid; gap: 8px; }
-.arquivo { position: relative; display: grid; gap: 4px; padding: 14px; border: 1.5px dashed #c9d3bf; border-radius: 8px; cursor: pointer; background: #fafbf7; overflow-wrap: anywhere; }
+.arquivo { position: relative; display: grid; gap: 4px; padding: 14px; border: 1.5px dashed #dbe3f2; border-radius: 8px; cursor: pointer; background: #f7f9fe; overflow-wrap: anywhere; }
 .arquivo input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .arquivo small { color: var(--muted); font-size: 12px; }
 .arquivo:focus-within { outline: 2px solid var(--olive); outline-offset: 2px; }
@@ -49,7 +49,7 @@
 .voltar { justify-self: start; font-size: 13px; color: var(--olive); text-decoration: none; font-weight: 700; }
 .linkTexto { justify-self: start; padding: 0; border: 0; background: none; color: var(--olive); font-size: 13px; text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
 .linkTexto:disabled { opacity: .5; cursor: not-allowed; }
-.enunciado { margin: 0; padding: 10px 12px; border-radius: 8px; background: #fafbf7; border: 1px solid var(--line); white-space: pre-wrap; font-size: 14px; }
+.enunciado { margin: 0; padding: 10px 12px; border-radius: 8px; background: #f7f9fe; border: 1px solid var(--line); white-space: pre-wrap; font-size: 14px; }
 .fotos { margin: 0; padding-left: 18px; font-size: 13px; overflow-wrap: anywhere; }
 .fotos a { color: var(--olive); }
 .acoes { display: flex; flex-wrap: wrap; gap: 8px; }
@@ -60,3 +60,16 @@
 .nota p { margin: 0; font-size: 14px; }
 
 @media (max-width:750px) { .page { padding:24px 18px 40px; } }
+
+/* Tema: título com a passada de marca-texto, como nas telas do professor. */
+.header h1 { display: table; font-weight: 800; line-height: 1.15; background-image: linear-gradient(transparent 58%, var(--marca, #ffe45c) 58%, var(--marca, #ffe45c) 90%, transparent 90%); background-repeat: no-repeat; background-size: 100% 100%; animation: marcaTexto .9s cubic-bezier(.65,.05,.25,1) .15s both; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+@keyframes marcaTexto { from { background-size: 0% 100%; } to { background-size: 100% 100%; } }
+@media (prefers-reduced-motion: reduce) { .header h1 { animation: none; } }
+.prova, .resumo div, .turma, .vazio { border-radius: 12px; box-shadow: 0 1px 0 rgba(24,32,47,.04), 0 6px 18px -12px rgba(35,70,160,.25); }
+.botao { border-radius: 10px; box-shadow: 0 2px 0 #1b377f; transition: transform .08s, background-color .15s; }
+.botao:hover { background: #1b377f; }
+.botao:active { transform: translateY(2px); box-shadow: none; }
+.ativa { box-shadow: inset 0 -3px 0 var(--olive); }
+.nota { border-left: 4px solid var(--ok, #2e7d53); background: #e6f4ec; }
+.nota strong { color: var(--ok, #2e7d53); }
+.erro { color: var(--erro, #d2445a); }

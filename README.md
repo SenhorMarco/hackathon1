@@ -1,36 +1,33 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Aula Clara — Corretor IA
 
-## Getting Started
+Aplicação Next.js com a interface do professor, contratos de IA e estrutura de banco no mesmo projeto.
 
-First, run the development server:
+## Executar
+
+Na raiz do repositório, com Node.js 20.9 ou superior:
 
 ```bash
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abra http://localhost:3000. A interface usa dados de demonstração e localStorage; as chamadas de IA e banco ainda precisam ser integradas à interface. Para utilizar os módulos de servidor, configure as variáveis de `.env.example` em `.env.local`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm run typecheck
+npm run lint
+npm run build
+npm start
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Estrutura
 
-## Learn More
+- `src/app/`: layout, estilos, página inicial e rotas do professor.
+- `src/components/workspace.tsx`: interface e estado da área do professor.
+- `src/lib/data.ts`: tipos, dados de demonstração e cálculos da interface.
+- `src/lib/ai/` e `src/lib/db/`: módulos de IA e banco.
+- `supabase/`: esquema SQL.
+- `scripts/`: verificações de integração e utilitário de hospedagem estática.
+- `docs/`: documentação da interface e exemplos de hospedagem.
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Veja [a documentação da interface](docs/FRONTEND.md), [os pontos de integração](docs/INTEGRACAO_BACKEND.md) e [os contratos de IA](CONTRATOS_IA.md).

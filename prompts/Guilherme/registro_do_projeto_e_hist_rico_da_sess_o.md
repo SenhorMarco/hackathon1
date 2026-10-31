@@ -627,7 +627,7 @@ O projeto prevê que a chave fique em um arquivo chamado `.env.local`, na pasta 
 
 Você sabe se a equipe já tem a chave da Featherless e onde ela está configurada? Não precisa enviá-la aqui.
 
-> eu tenho minha própria chave de api, é a seguinte: rc_39ab3dc935365dfbbcf6a1ba8f5c11772a93c519b4b0c6d6fba16a75b02cb472
+> eu tenho minha própria chave de api, é a seguinte: [chave removida]
 >
 > User context
 >

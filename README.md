@@ -1,80 +1,112 @@
-# Gaider — Corretor IA
+# Gaider
 
-Aplicação Next.js para apoiar professores na preparação de provas, revisão individual de respostas e consulta de resultados. A IA produz sugestões; a nota e o feedback só são considerados validados após a ação do professor.
+**Correção de provas discursivas com o professor no controle.** A IA lê a prova, entende o raciocínio de cada aluno, reconhece soluções alternativas e organiza respostas parecidas. O professor revisa, decide cada nota e o aluno recebe o feedback enquanto a matéria ainda está fresca.
 
-## Executar
+Projeto do 1º Hackathon LEPV & DAMA (tema: Educação).
 
-Use Node.js 22.18+ ou 24+ na raiz do repositório:
+- **Sistema no ar:** https://hackathon1-blond.vercel.app
+- **Repositório:** https://github.com/SenhorMarco/hackathon1
 
-```bash
-npm ci
-npm run dev
-```
+## O problema
 
-Abra http://localhost:3000. Para os fluxos de servidor, configure as variáveis de `.env.example` em `.env.local` e aplique os scripts SQL descritos em [Contas](docs/CONTAS.md). O acesso às áreas de professor e aluno usa Supabase Auth.
+A ideia nasceu da rotina de um colega nosso que corrige muitas provas discursivas. Três dores apareceram:
 
-```bash
-npm run lint
-npm run typecheck
-npm run build
-npm start
-```
+1. **Tempo:** corrigir é manual e repetitivo; o mesmo erro aparece em dezenas de provas.
+2. **Raciocínio:** quando o aluno resolve por um caminho diferente do gabarito, o professor precisa reconstruir o pensamento para saber se está certo.
+3. **Feedback atrasado:** a nota chega dias depois, quando a matéria já mudou, e o aluno não usa o feedback para aprender.
 
-## Fluxo do professor
+## A solução
 
-1. Entre com uma conta de professor, crie uma turma e cadastre alunos.
-2. Envie a prova em PDF, PNG ou JPEG. A análise usa IA para identificar questões e sugerir um barema; revise os dados e confirme o barema antes da correção.
-3. Receba os arquivos das provas dos alunos pelo fluxo disponível, confira a sugestão de nome e confirme manualmente o aluno.
-4. Na revisão, confira a transcrição, a análise sugerida e o arquivo original. Ajuste a nota e escreva o feedback de cada resposta; a validação é individual. Respostas ilegíveis exigem conferência explícita do arquivo. Transcrições sem questão identificada ou duplicadas são preservadas como pendentes; associe cada uma manualmente após abrir o arquivo. A associação limpa qualquer nota sugerida e exige avaliação individual.
-5. Se uma resposta não tiver sido transcrita, o professor pode registrar sua transcrição após conferir o arquivo e selecionar a questão. Esse registro começa sem nota e não substitui respostas existentes; pendências de associação precisam ser resolvidas antes.
-6. A aplicação verifica completude por questão e por prova. Respostas ausentes, duplicadas, sem questão correspondente ou sem nota/feedback válidos impedem a preparação/liberação das devolutivas. Ausência de resposta identificada não vira nota zero automaticamente.
-7. Consulte médias e totais somente das provas completamente validadas. A exportação CSV inclui as notas por questão, total e situação; pendências aparecem como `Pendente` ou `Em revisão` e não entram na média.
+| Etapa | O que o Gaider faz | O que o professor faz |
+|---|---|---|
+| Antes da prova | Lê cada questão, resolve, aponta ambiguidade ou dado faltando, estima a dificuldade e sugere um barema | Ajusta e confirma o barema |
+| Envio | O aluno entra na conta e envia a foto de cada resposta, questão por questão | — |
+| Pré-correção | Transcreve a resposta, avalia passo a passo, identifica o tipo de erro e sugere a nota pelo barema | — |
+| Solução alternativa | Reconhece métodos diferentes do gabarito e sugere um critério de barema para eles | Decide se aceita |
+| Organização | Agrupa respostas parecidas por abordagem para a revisão em sequência | Valida cada resposta individualmente |
+| Devolutiva | Escreve o que o aluno acertou, onde errou, uma dica e exercícios de reforço | Revisa, aprova e libera |
+| Aluno | Vê a nota e o comentário de cada questão assim que o professor a valida | — |
 
-O agrupamento por abordagem é opcional e serve para organizar a leitura. Não aprova respostas em lote: cada resposta mantém sua própria nota e feedback. Devolutivas são geradas a partir dos dados validados, depois revisadas e aprovadas textualmente pelo professor; a publicação exige uma confirmação explícita. A geração valida um snapshot SHA-256 das notas, comentários, transcrições, referências dos arquivos, barema e análise antes de salvar; se a revisão mudar durante a geração, o texto é descartado. Edições do texto também usam controle otimista de versão.
+A IA nunca dá nota final sozinha: toda sugestão passa pela validação do professor.
 
-Essas verificações sequenciais não oferecem transação única entre rotas concorrentes. Uma transação no banco continua sendo trabalho futuro para eliminar essa janela de concorrência.
+## Como testar
 
-## Estado e limites do MVP
+1. Abra https://hackathon1-blond.vercel.app e entre com a conta de professor de demonstração informada no envio do projeto.
+2. Abra uma prova já analisada: veja a **Análise prévia** e os **Baremas**.
+3. Na aba **Correção**, confira a transcrição e a avaliação passo a passo da IA, os grupos por abordagem e a sinalização de solução alternativa. Valide uma resposta.
+4. Entre com a conta de aluno de demonstração: em **Minhas provas**, escolha a turma, abra a prova, veja a nota da questão validada e envie a foto de uma resposta.
 
-Turmas, alunos, provas, submissões, respostas e resultados do professor são persistidos no Supabase, sob controle de conta e propriedade. O bucket `provas` é privado; os links de arquivo são temporários. O localStorage mantém apenas estado auxiliar da interface e não substitui os registros do banco.
+Para criar seus próprios dados: crie uma conta de professor, uma turma e cadastre um aluno com o e-mail de uma conta de aluno. Envie uma prova em PDF ou imagem e clique em **Analisar prova** (leva de 1 a 4 minutos, conforme o número de questões).
 
-Ainda não estão implementadas as regras **RN17** (invalidar/avisar quando o barema muda em relação a sugestões e notas já revisadas) e **RN19** (alteração pós-liberação atualizar a devolutiva e indicar ao aluno que houve mudança). O envio pelo próprio aluno e o gerenciamento de prazos estão em trabalho paralelo. Não trate essas regras como cobertas pelo MVP atual.
+## Funcionalidades
 
-## Configuração do Supabase
+**Professor**
+- Turmas, alunos (vinculados pelo e-mail) e provas.
+- Análise prévia por IA: transcrição das questões, resolução de referência, existência de resposta (única, múltipla, sem solução, ambígua), problemas no enunciado e dificuldade.
+- Barema sugerido ou revisado, editável.
+- Recebimento das provas dos alunos (enviadas pelo aluno ou pelo professor em lote, com leitura do nome no cabeçalho).
+- Pré-correção por IA, agrupamento por abordagem, validação individual com nota e feedback, associação manual de respostas pendentes.
+- Devolutiva por aluno gerada pela IA, editável, e liberação conferida.
+- Notas e resultados da turma com exportação em CSV.
 
-1. Configure `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SUPABASE_URL` e `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` conforme `.env.example`. A chave `service_role` é somente de servidor.
-2. Execute `supabase/schema.sql` e `supabase/contas.sql` no mesmo projeto Supabase. Configure Email Auth, confirmação de e-mail e as URLs de callback conforme [docs/CONTAS.md](docs/CONTAS.md).
-3. Para análise por IA, configure `FEATHERLESS_API_KEY` e, se necessário, `AI_MODEL` com modelo que aceite imagem.
-4. Reinicie a aplicação depois de alterar variáveis. Em produção, configure-as no ambiente Production e faça novo deployment.
+**Aluno**
+- Escolha da turma e lista de provas: para enviar, enviadas, corrigidas.
+- Página da prova com envio de foto por questão (trocar e remover).
+- Nota e comentário de cada questão assim que o professor valida; devolutiva completa após a liberação.
 
-O endpoint `/api/health` verifica a presença das configurações, o acesso às colunas necessárias e a existência do bucket privado; não confirma por si só que a chave/modelo de IA funcionam.
+## Tecnologia
 
-## Upload e análise
-
-Na aba de provas, PDF, PNG e JPEG podem ser enviados até 20 MB por arquivo. O envio da prova usa o Storage privado; a análise lê provas PDF ou imagem e sugere questões e barema. O fluxo de respostas aceita PDFs individuais ou conjuntos de imagens de um aluno. A sugestão de nome não cria associação: o professor escolhe o aluno e confirma. PDFs contendo provas de vários alunos não são separados automaticamente.
-
-O navegador envia arquivos diretamente ao bucket privado por URLs assinadas. A finalização verifica tamanho, conteúdo e vínculo antes de registrar prova/submissão. Uploads abandonados antes da finalização podem deixar objetos sem registro no bucket e exigem limpeza operacional. Para detalhes de configuração e fluxo, consulte [docs/FRONTEND.md](docs/FRONTEND.md) e [docs/CONTAS.md](docs/CONTAS.md).
-
-## Testes de integração
-
-Os scripts de integração usam serviços simulados, salvo indicação em contrário, e não enviam arquivos ou dados ao Supabase/IA reais:
-
-```bash
-node scripts/testar-revisao.mjs
-node scripts/testar-revisao-api.mjs
-node scripts/testar-revisao-browser.mjs
-node scripts/testar-pendencias.mjs
-node scripts/testar-upload.mjs
-node scripts/testar-contas.mjs
-```
-
-`testar-revisao.mjs` cobre regras de validação, completude, totalização e CSV. `testar-pendencias.mjs` cobre a preservação de transcrições sem número, desconhecidas ou duplicadas sem nota final. Os scripts `testar-revisao-api.mjs` e `testar-revisao-browser.mjs` cobrem a revisão por API e a interface com dependências simuladas. `testar-upload.mjs` cobre os fluxos de upload e análise simulados; `testar-contas.mjs` confere autenticação e autorização com Supabase simulado.
+- **Next.js 16** (App Router, TypeScript) hospedado na **Vercel**.
+- **Supabase**: Postgres, Storage privado (links assinados) e Auth (contas de professor e aluno).
+- **IA via Featherless** (API compatível com OpenAI), modelo com visão configurável em `AI_MODEL` (padrão `moonshotai/Kimi-K2.5`). Cada etapa tem um contrato JSON em [`src/lib/ai/schemas.ts`](src/lib/ai/schemas.ts), validado com Zod; respostas fora do formato são pedidas de novo.
+- A análise roda uma chamada por página, em paralelo, com raciocínio estendido desligado para caber no tempo da Vercel.
 
 ## Estrutura
 
-- `src/app/`: páginas e rotas de API.
-- `src/components/`: workspace e interface de revisão do professor.
-- `src/lib/`: autenticação, banco, análise de IA e regras de revisão.
-- `supabase/`: schema e migrações SQL.
-- `scripts/`: testes de integração e utilitário de hospedagem estática.
-- `docs/`: documentação de interface, integração e regras do produto.
+- `src/app/`: páginas (professor, aluno, login) e rotas de API (`/api/exams`, `/api/aluno`).
+- `src/components/`: telas do professor (`workspace`, `correction-review`), envios e portal do aluno.
+- `src/lib/ai/`: cliente da IA, prompts (análise, barema, correção, agrupamento, devolutiva) e validações.
+- `src/lib/aluno/`, `src/lib/db/`, `src/lib/uploads/`: regras de acesso, banco e arquivos.
+- `supabase/`: `schema.sql` e `contas.sql`.
+- `scripts/`: testes de integração e utilitários.
+- `docs/`: regras de negócio, plano de negócios, contas, decisões e validações.
+- `prompts/`: transcrições das conversas com IA usadas pela equipe.
+
+## Executar localmente
+
+Use Node.js 22.18+.
+
+```bash
+npm ci
+cp .env.example .env.local   # preencha as variáveis
+npm run dev
+```
+
+No SQL Editor do Supabase, rode `supabase/schema.sql` e depois `supabase/contas.sql`. Detalhes de autenticação em [docs/CONTAS.md](docs/CONTAS.md). Nunca faça commit do `.env.local` nem coloque a chave `service_role` em variáveis `NEXT_PUBLIC_*`.
+
+Verificações:
+
+```bash
+npm run typecheck
+npm run lint
+npm run build
+node scripts/testar-revisao.mjs
+node scripts/testar-pendencias.mjs
+node scripts/testar-contas.mjs
+npx tsx scripts/testar-supabase.mts
+```
+
+## Limites do MVP
+
+- Testado principalmente com provas de matemática digitadas e fotos nítidas; letra de mão pouco legível exige conferência do professor.
+- A análise de uma prova longa pode levar alguns minutos.
+- Prazo de envio por prova (RN05) ainda não tem tela; a prova recebe envios até as notas serem liberadas.
+- Histórico do aluno ao longo do ano e plano de estudo adaptativo estão no roadmap.
+
+## Documentos
+
+- [Plano de negócios](docs/PLANO_DE_NEGOCIOS.md)
+- [Regras de negócio](docs/REGRAS_DE_NEGOCIO.md)
+- [Contratos da IA](CONTRATOS_IA.md) · [Escolha do modelo](docs/escolha-modelo-ia.md) · [Revisão dos prompts](docs/revisao-prompts.md)
+- [Contas e permissões](docs/CONTAS.md) · [Integração do backend](docs/INTEGRACAO_BACKEND.md)
+- [Validação em produção](docs/validacao-producao-2026-10-31.md)

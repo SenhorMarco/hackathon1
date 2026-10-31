@@ -1,0 +1,437 @@
+{
+  "modelo": "moonshotai/Kimi-K2.5",
+  "dados": "sintéticos; execução única por caso, sem estimativa de acurácia",
+  "maxTokensSaida": 6000,
+  "limiteCustoInformadoUSD": 0.5,
+  "chamadas": 9,
+  "custoInformadoUSD": 0.064580488,
+  "resultados": [
+    {
+      "nome": "barema-coerente-sem-falso-problema",
+      "aprovado": true,
+      "resultado": {
+        "origem": "analisado",
+        "barema": {
+          "questoes": [
+            {
+              "numero": 1,
+              "valorTotal": 2,
+              "criterios": [
+                {
+                  "id": "q1-c1",
+                  "descricao": "Isola 3x=12 corretamente.",
+                  "pontos": 1
+                },
+                {
+                  "id": "q1-c2",
+                  "descricao": "Encontra x=4 corretamente.",
+                  "pontos": 1
+                }
+              ]
+            }
+          ]
+        },
+        "problemas": []
+      },
+      "usos": [
+        {
+          "prompt_tokens": 1217,
+          "completion_tokens": 148,
+          "total_tokens": 1365,
+          "cost": 0.0014768,
+          "cached_tokens": 0,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "duracaoMs": 14392
+        }
+      ]
+    },
+    {
+      "nome": "barema-sugerido-com-pontuacao-explicita",
+      "aprovado": true,
+      "resultado": {
+        "origem": "sugerido",
+        "barema": {
+          "questoes": [
+            {
+              "numero": 1,
+              "valorTotal": 2,
+              "criterios": [
+                {
+                  "id": "q1-c1",
+                  "descricao": "Isolar o termo com a incógnita (3x = 12)",
+                  "pontos": 1
+                },
+                {
+                  "id": "q1-c2",
+                  "descricao": "Determinar o valor de x (x = 4)",
+                  "pontos": 1
+                }
+              ]
+            }
+          ]
+        },
+        "problemas": []
+      },
+      "usos": [
+        {
+          "prompt_tokens": 1144,
+          "completion_tokens": 1285,
+          "total_tokens": 2429,
+          "cost": 0.0052842,
+          "cached_tokens": 0,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "duracaoMs": 27546
+        }
+      ]
+    },
+    {
+      "nome": "correcao-correta",
+      "aprovado": true,
+      "resultado": {
+        "nomeLido": null,
+        "questoes": [
+          {
+            "numero": 1,
+            "transcricao": "3x=12; x=4.",
+            "legivel": true,
+            "passos": [
+              {
+                "descricao": "Escreve 3x=12",
+                "correto": true,
+                "comentario": "Isolamento correto do termo com a incógnita, equivalente a subtrair 2 de ambos os lados."
+              },
+              {
+                "descricao": "Escreve x=4",
+                "correto": true,
+                "comentario": "Divisão correta por 3, obtendo o valor exato da incógnita."
+              }
+            ],
+            "metodo": "padrao",
+            "descricaoMetodo": "Isolamento da incógnita por operações inversas",
+            "tipoErro": "nenhum",
+            "primeiroPassoErrado": null,
+            "criteriosAtendidos": [
+              "q1-c1",
+              "q1-c2"
+            ],
+            "notaSugerida": 2,
+            "justificativa": "O aluno apresentou os dois passos esperados de forma correta e completa, isolando o termo com a incógnita (3x=12) e determinando o valor correto de x (x=4), atendendo integralmente aos critérios do barema."
+          }
+        ]
+      },
+      "usos": [
+        {
+          "prompt_tokens": 1780,
+          "completion_tokens": 1434,
+          "total_tokens": 3214,
+          "cost": 0.0062996,
+          "cached_tokens": 0,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "duracaoMs": 37060
+        }
+      ]
+    },
+    {
+      "nome": "correcao-parcial",
+      "aprovado": true,
+      "resultado": {
+        "nomeLido": null,
+        "questoes": [
+          {
+            "numero": 1,
+            "transcricao": "3x=12; x=12.",
+            "legivel": true,
+            "passos": [
+              {
+                "descricao": "Escreve 3x=12",
+                "correto": true,
+                "comentario": "Isolamento correto do termo com x, equivalente a subtrair 2 dos dois lados."
+              },
+              {
+                "descricao": "Escreve x=12",
+                "correto": false,
+                "comentario": "Erro no cálculo final: deveria dividir 12 por 3 para obter x=4."
+              }
+            ],
+            "metodo": "padrao",
+            "descricaoMetodo": "Isolamento da incógnita por operações inversas.",
+            "tipoErro": "calculo",
+            "primeiroPassoErrado": 2,
+            "criteriosAtendidos": [
+              "q1-c1"
+            ],
+            "notaSugerida": 1,
+            "justificativa": "O aluno atendeu ao critério q1-c1 ao apresentar corretamente 3x=12. Contudo, errou no critério q1-c2 ao concluir x=12 em vez de x=4, não dividindo por 3. Nota sugerida: 1 ponto."
+          }
+        ]
+      },
+      "usos": [
+        {
+          "prompt_tokens": 1780,
+          "completion_tokens": 1329,
+          "total_tokens": 3109,
+          "cost": 0.0059426,
+          "cached_tokens": 0,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "duracaoMs": 33636
+        }
+      ]
+    },
+    {
+      "nome": "correcao-sem-criterios-atendidos",
+      "aprovado": true,
+      "resultado": {
+        "nomeLido": null,
+        "questoes": [
+          {
+            "numero": 1,
+            "transcricao": "3x=16; x=16.",
+            "legivel": true,
+            "passos": [
+              {
+                "descricao": "3x=16",
+                "correto": false,
+                "comentario": "Erro de cálculo: ao isolar o termo 3x, deveria obter 12 (14-2), mas escreveu 16."
+              },
+              {
+                "descricao": "x=16",
+                "correto": false,
+                "comentario": "Valor incorreto. Mesmo partindo de 3x=16, deveria dividir por 3. O valor correto seria x=4."
+              }
+            ],
+            "metodo": "padrao",
+            "descricaoMetodo": "Isolamento da variável por operações inversas (subtração e divisão), executado com erros aritméticos",
+            "tipoErro": "calculo",
+            "primeiroPassoErrado": 1,
+            "criteriosAtendidos": [],
+            "notaSugerida": 0,
+            "justificativa": "O aluno não atingiu nenhum dos critérios do barema. No primeiro passo, errou a subtração (3x=16 em vez de 3x=12). No segundo passo, apresentou x=16 em vez de x=4, não realizando a divisão por 3 ou propagando o erro anterior. Requer revisão do professor."
+          }
+        ]
+      },
+      "usos": [
+        {
+          "prompt_tokens": 1781,
+          "completion_tokens": 1974,
+          "total_tokens": 3755,
+          "cost": 0.0081364,
+          "cached_tokens": 0,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "duracaoMs": 42748
+        }
+      ]
+    },
+    {
+      "nome": "correcao-metodo-alternativo-valido",
+      "aprovado": true,
+      "resultado": {
+        "nomeLido": null,
+        "questoes": [
+          {
+            "numero": 1,
+            "transcricao": "x²-5x+6=(x-2)(x-3)=0; x=2 ou x=3.",
+            "legivel": true,
+            "passos": [
+              {
+                "descricao": "Fatora o trinômio: x²-5x+6=(x-2)(x-3)",
+                "correto": true,
+                "comentario": "Fatoração correta do trinômio do segundo grau."
+              },
+              {
+                "descricao": "Iguala o produto a zero: (x-2)(x-3)=0",
+                "correto": true,
+                "comentario": "Passo válido para aplicar a lei do anulamento do produto."
+              },
+              {
+                "descricao": "Conclui as raízes: x=2 ou x=3",
+                "correto": true,
+                "comentario": "Raízes corretas obtidas dos fatores."
+              }
+            ],
+            "metodo": "alternativo",
+            "descricaoMetodo": "Fatoração do trinômio e lei do anulamento do produto, em vez de Bhaskara",
+            "tipoErro": "nenhum",
+            "primeiroPassoErrado": null,
+            "criteriosAtendidos": [
+              "q1-c1",
+              "q1-c2"
+            ],
+            "notaSugerida": 2,
+            "justificativa": "O aluno utilizou fatoração, método matematicamente válido, e obteve corretamente as duas raízes x=2 e x=3, atendendo ambos os critérios do barema."
+          }
+        ]
+      },
+      "usos": [
+        {
+          "prompt_tokens": 1844,
+          "completion_tokens": 2132,
+          "total_tokens": 3976,
+          "cost": 0.007731744,
+          "cached_tokens": 1536,
+          "prompt_tokens_details": {
+            "cached_tokens": 1536
+          },
+          "duracaoMs": 51607
+        }
+      ]
+    },
+    {
+      "nome": "analise-dados-insuficientes",
+      "aprovado": true,
+      "resultado": {
+        "questoes": [
+          {
+            "numero": 1,
+            "enunciado": "Um retângulo tem área de 12 cm². Determine seu perímetro.",
+            "conteudo": "Geometria plana: área e perímetro de retângulo",
+            "resolucao": {
+              "passos": [
+                "1. A área de um retângulo é dada por A = b · h, onde b é a base e h é a altura. Temos b · h = 12.",
+                "2. O perímetro de um retângulo é dado por P = 2(b + h).",
+                "3. O sistema apresenta duas incógnitas (b e h) e apenas uma equação. Não há informação adicional que restrinja os valores possíveis.",
+                "4. Testando pares válidos para b·h=12: se b=1 e h=12, P=26; se b=2 e h=6, P=16; se b=3 e h=4, P=14; se b=h=√12 (quadrado), P≈13,86.",
+                "5. Cada par de lados que satisfaz a área gera um perímetro diferente. Logo, não há um valor único determinável."
+              ],
+              "respostaFinal": "Não é possível determinar um perímetro único com os dados fornecidos. O valor depende das dimensões específicas do retângulo, que não foram especificadas."
+            },
+            "existenciaResposta": {
+              "status": "ambigua",
+              "observacao": "Dados insuficientes impedem uma conclusão segura de um único valor. Existem infinitos pares de lados que satisfazem a área, gerando múltiplos perímetros válidos."
+            },
+            "problemasEnunciado": [
+              "Dados insuficientes: falta informação sobre uma das dimensões ou uma restrição adicional (ex.: forma específica, relação entre base e altura ou perímetro mínimo) para permitir o cálculo do perímetro."
+            ],
+            "dificuldadeEstimada": "facil",
+            "justificativaDificuldade": "A insuficiência de dados é identificada diretamente pela aplicação das fórmulas básicas de área e perímetro, exigindo apenas conhecimento conceitual inicial de geometria."
+          }
+        ],
+        "observacoesGerais": "A questão contém uma inconsistência estrutural ao pedir a determinação de um perímetro único fornecendo apenas a área. Isso impossibilita uma resposta fechada e padronizada. Recomenda-se revisar o enunciado para incluir uma informação faltante (como o valor de um lado, a forma específica ou a condição de perímetro mínimo) ou reformular a questão para trabalhar com desigualdades ou otimização, se for o objetivo pedagógico."
+      },
+      "usos": [
+        {
+          "prompt_tokens": 938,
+          "completion_tokens": 4326,
+          "total_tokens": 5264,
+          "cost": 0.0154588,
+          "cached_tokens": 0,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "duracaoMs": 24421
+        }
+      ]
+    },
+    {
+      "nome": "correcao-raiz-estranha",
+      "aprovado": true,
+      "resultado": {
+        "nomeLido": null,
+        "questoes": [
+          {
+            "numero": 1,
+            "transcricao": "x+2=x²; (x-2)(x+1)=0; a solução é x=2 ou x=-1.",
+            "legivel": true,
+            "passos": [
+              {
+                "descricao": "Eleva ambos os lados ao quadrado obtendo x+2=x²",
+                "correto": true,
+                "comentario": "Passo correto: eliminação do radical por elevação ao quadrado."
+              },
+              {
+                "descricao": "Fatora a equação quadrática como (x-2)(x+1)=0",
+                "correto": true,
+                "comentario": "Passo correto: identifica corretamente os candidatos x=2 e x=-1."
+              },
+              {
+                "descricao": "Conclui que ambos x=2 e x=-1 são soluções válidas",
+                "correto": false,
+                "comentario": "Erro conceitual: não verificou na equação original. Para x=-1, sqrt(1)=1≠-1, logo x=-1 é raiz estranha."
+              }
+            ],
+            "metodo": "padrao",
+            "descricaoMetodo": "Resolução por elevação ao quadrado e fatoração, sem verificação final das raízes",
+            "tipoErro": "conceito",
+            "primeiroPassoErrado": 3,
+            "criteriosAtendidos": [
+              "q1-c1",
+              "q1-c2"
+            ],
+            "notaSugerida": 2,
+            "justificativa": "O aluno atendeu ao critério q1-c1 ao obter corretamente x+2=x² e ao critério q1-c2 ao encontrar os candidatos x=2 e x=-1 por fatoração. No entanto, não realizou a verificação na equação original (critério q1-c3), aceitando x=-1 como solução quando deveria rejeitá-la. Nota sugerida: 2/3 pontos."
+          }
+        ]
+      },
+      "usos": [
+        {
+          "prompt_tokens": 1898,
+          "completion_tokens": 2271,
+          "total_tokens": 4169,
+          "cost": 0.008247544,
+          "cached_tokens": 1536,
+          "prompt_tokens_details": {
+            "cached_tokens": 1536
+          },
+          "duracaoMs": 47165
+        }
+      ]
+    },
+    {
+      "nome": "correcao-erro-propagado-sem-dupla-penalizacao",
+      "aprovado": true,
+      "resultado": {
+        "nomeLido": null,
+        "questoes": [
+          {
+            "numero": 1,
+            "transcricao": "2x=10; dividindo por 2: x=5.",
+            "legivel": true,
+            "passos": [
+              {
+                "descricao": "Isola o termo em x, escrevendo 2x=10",
+                "correto": false,
+                "comentario": "Erro de cálculo: 7−3=4, portanto deveria ser 2x=4."
+              },
+              {
+                "descricao": "Divide ambos os membros por 2, obtendo x=5",
+                "correto": true,
+                "comentario": "Operação correta aplicada à equação que escreveu; não se deve penalizar novamente o erro propagado."
+              }
+            ],
+            "metodo": "padrao",
+            "descricaoMetodo": "Isolamento do termo linear e divisão pelo coeficiente",
+            "tipoErro": "calculo",
+            "primeiroPassoErrado": 1,
+            "criteriosAtendidos": [
+              "q1-c2"
+            ],
+            "notaSugerida": 1,
+            "justificativa": "O aluno não isolou corretamente o termo em x (2x=10 em vez de 2x=4), de modo que o critério q1-c1 não foi atendido. Porém, dividiu ambos os membros da equação por 2 corretamente a partir do valor que obteve (2x=10 → x=5), atendendo o critério q1-c2, cujo barema prevê não penalizar novamente o erro propagado."
+          }
+        ]
+      },
+      "usos": [
+        {
+          "prompt_tokens": 1817,
+          "completion_tokens": 1338,
+          "total_tokens": 3155,
+          "cost": 0.0060028,
+          "cached_tokens": 0,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "duracaoMs": 31829
+        }
+      ]
+    }
+  ]
+}

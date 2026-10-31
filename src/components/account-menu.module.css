@@ -1,0 +1,12 @@
+.account { display: flex; align-items: center; gap: 14px; color: #34462c; min-width: 0; }
+.bar { justify-content: flex-end; padding: 12px 24px; background: #f3f6ef; border-bottom: 1px solid #e5eadf; }
+.compact { justify-content: flex-end; }
+.identity { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.avatar { display: grid; place-items: center; width: 38px; height: 38px; flex-shrink: 0; border-radius: 12px; background: #e9efdf; color: #52673d; font-size: 12px; font-weight: 700; }
+.details { display: flex; flex-direction: column; min-width: 0; gap: 3px; }
+.details strong { overflow: hidden; max-width: 190px; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.details small { color: #788771; font-size: 10px; }
+.signout { display: inline-flex; align-items: center; gap: 6px; flex-shrink: 0; padding: 9px 12px; border: 1px solid #dce5d4; border-radius: 9px; color: #52673d; font-size: 12px; font-weight: 600; }
+.signout:hover { background: #edf3e6; border-color: #c8d6bb; }
+.error { color: #a24232; font-size: 11px; }
+@media (max-width: 750px) { .account { gap: 8px; } .details strong { max-width: 95px; } .details small { font-size: 9px; } .avatar { width: 34px; height: 34px; border-radius: 10px; } .signout { padding: 8px; } .compact .signout span { display: none; } .bar { padding: 10px 16px; } }

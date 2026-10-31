@@ -1,9 +1,5 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-## Upload em lote das provas dos alunos
-
-Acesse `/provas/<UUID-da-prova>/submissoes` para enviar as páginas das provas e associá-las aos alunos da turma. A IA pode sugerir o nome do cabeçalho, sujeito à confirmação do professor. Veja [como configurar, testar e as decisões técnicas](docs/upload-lote.md).
-
 ## Getting Started
 
 First, run the development server:

@@ -54,7 +54,7 @@ export default function AlunoPortal({ nome, email, turmas }: { nome: string; ema
   const primeiroNome = nome.split(' ')[0];
 
   if (!turmas.length) return <main className={styles.page}>
-    <header className={styles.header}><p className={styles.eyebrow}>MEU APRENDIZADO</p><h1>Olá, {primeiroNome}.</h1></header>
+    <header className={styles.header}><p className={styles.eyebrow}>ÁREA DO ALUNO</p><h1>Olá, {primeiroNome}.</h1></header>
     <section className={styles.vazio}>
       <h2>Você ainda não está em nenhuma turma.</h2>
       <p>Peça ao seu professor para cadastrar você na turma usando o e-mail <strong>{email}</strong>. Depois, recarregue esta página.</p>
@@ -71,7 +71,7 @@ export default function AlunoPortal({ nome, email, turmas }: { nome: string; ema
 
   return <main className={styles.page}>
     <header className={styles.header}>
-      <p className={styles.eyebrow}>MEU APRENDIZADO</p>
+      <p className={styles.eyebrow}>ÁREA DO ALUNO</p>
       <h1>Olá, {primeiroNome}.</h1>
       <p className={styles.muted}>Escolha a turma para ver as provas, enviar suas respostas e acompanhar as devolutivas.</p>
     </header>

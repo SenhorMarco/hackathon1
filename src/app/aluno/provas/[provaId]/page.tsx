@@ -6,7 +6,7 @@ import { account } from '@/lib/auth/server';
 import { notaValidada, provaDoAluno } from '@/lib/aluno/portal';
 import { questaoDoCaminho } from '@/lib/aluno/questoes';
 import { db } from '@/lib/db/server';
-import AccountMenu from '@/components/account-menu';
+import AlunoShell from '@/components/aluno-shell';
 import AlunoProva, { type QuestaoParaEnvio } from '@/components/aluno-prova';
 
 export const metadata = { title: 'Aula Clara | Enviar prova', robots: { index: false } };
@@ -48,8 +48,7 @@ async function Conteudo({ params }: { params: Promise<{ provaId: string }> }) {
     };
   });
 
-  return <>
-    <AccountMenu name={user.nome} />
+  return <AlunoShell name={user.nome} title="Prova">
     <AlunoProva
       prova={{ id: prova.id, titulo: prova.titulo, data: prova.data_avaliacao ?? null, prazo: typeof prova.prazo_envio === 'string' ? prova.prazo_envio : null }}
       aceitaEnvio={aceitaEnvio}
@@ -58,7 +57,7 @@ async function Conteudo({ params }: { params: Promise<{ provaId: string }> }) {
       emCorrecao={!!envio && ['corrigindo', 'corrigida'].includes(envio.status)}
       devolutiva={devolutiva?.token ?? null}
     />
-  </>;
+  </AlunoShell>;
 }
 
 export default function Page({ params }: { params: Promise<{ provaId: string }> }) {

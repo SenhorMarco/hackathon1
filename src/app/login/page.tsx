@@ -26,7 +26,7 @@ export default function Login() {
   } catch {setMessage(mode==='login'?'Não foi possível entrar. Confira e-mail, senha e a confirmação do e-mail.':'Não foi possível concluir. Confira os dados ou tente novamente mais tarde.');}
   finally {setBusy(false);}
  }
- return <main className="auth-page"><section className="auth-card"><a href="/login" className="auth-brand">aula clara</a><h1>{mode==='login'?'Bem-vindo de volta':mode==='signup'?'Crie sua conta':'Recupere sua senha'}</h1><p>Entre com seu e-mail e senha ou crie uma conta.</p><form onSubmit={submit}>
+ return <main className="auth-page"><section className="auth-card"><a href="/login" className="auth-brand">Gaider</a><h1>{mode==='login'?'Bem-vindo de volta':mode==='signup'?'Crie sua conta':'Recupere sua senha'}</h1><p>Entre com seu e-mail e senha ou crie uma conta.</p><form onSubmit={submit}>
  {mode==='signup'&&<><label>Nome completo<input name="nome" required minLength={2} maxLength={100} autoComplete="name"/></label><label>Tipo de conta<select name="papel"><option value="aluno">Aluno</option><option value="professor">Professor</option></select></label></>}
  <label>E-mail<input name="email" type="email" autoComplete="email" required maxLength={254}/></label>
  {mode!=='reset'&&<label>Senha<input name="password" type="password" required minLength={8} maxLength={128} autoComplete={mode==='signup'?'new-password':'current-password'}/></label>}

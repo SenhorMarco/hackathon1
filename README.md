@@ -1,4 +1,4 @@
-# Aula Clara — Corretor IA
+# Gaider — Corretor IA
 
 Aplicação Next.js para apoiar professores na preparação de provas, revisão individual de respostas e consulta de resultados. A IA produz sugestões; a nota e o feedback só são considerados validados após a ação do professor.
 

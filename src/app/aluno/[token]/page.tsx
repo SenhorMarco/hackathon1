@@ -7,7 +7,7 @@ import { db } from '@/lib/db/server';
 import styles from './aluno.module.css';
 import AlunoShell from '@/components/aluno-shell';
 
-export const metadata = { title: 'Aula Clara | Sua devolutiva', robots: { index: false, follow: false }, referrer: 'no-referrer' };
+export const metadata = { title: 'Gaider | Sua devolutiva', robots: { index: false, follow: false }, referrer: 'no-referrer' };
 
 const fmt = (n: number) => n.toLocaleString('pt-BR', { maximumFractionDigits: 2 });
 

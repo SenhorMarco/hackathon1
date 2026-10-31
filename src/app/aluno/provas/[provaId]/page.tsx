@@ -9,7 +9,7 @@ import { db } from '@/lib/db/server';
 import AlunoShell from '@/components/aluno-shell';
 import AlunoProva, { type QuestaoParaEnvio } from '@/components/aluno-prova';
 
-export const metadata = { title: 'Aula Clara | Enviar prova', robots: { index: false } };
+export const metadata = { title: 'Gaider | Enviar prova', robots: { index: false } };
 
 async function Conteudo({ params }: { params: Promise<{ provaId: string }> }) {
   await connection();

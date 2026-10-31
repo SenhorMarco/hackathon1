@@ -57,6 +57,11 @@ export interface PedidoJson<T extends z.ZodType> {
   texto: string;
   imagens?: Imagem[];
   maxTokens?: number;
+  /**
+   * Desliga o raciocínio estendido dos modelos que o têm (Qwen 3.x e similares).
+   * Deixa a resposta várias vezes mais rápida; use em tarefas de transcrição.
+   */
+  semRaciocinio?: boolean;
 }
 
 export async function gerarJson<T extends z.ZodType>({
@@ -67,6 +72,7 @@ export async function gerarJson<T extends z.ZodType>({
   texto,
   imagens = [],
   maxTokens = 8000,
+  semRaciocinio = false,
 }: PedidoJson<T>): Promise<z.infer<T>> {
   const jsonSchema = JSON.stringify(z.toJSONSchema(schema));
   const mensagens: OpenAI.Chat.ChatCompletionMessageParam[] = [
@@ -100,7 +106,9 @@ export async function gerarJson<T extends z.ZodType>({
       messages: mensagens,
       max_tokens: maxTokens,
       temperature: 0.2,
-    });
+      // Parâmetro da Featherless (vLLM), fora dos tipos da OpenAI.
+      ...(semRaciocinio ? { chat_template_kwargs: { enable_thinking: false } } : {}),
+    } as OpenAI.Chat.ChatCompletionCreateParamsNonStreaming);
     ultimaResposta = resposta.choices[0]?.message?.content ?? "";
 
     try {

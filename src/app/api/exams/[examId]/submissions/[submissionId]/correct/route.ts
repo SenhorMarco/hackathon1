@@ -40,6 +40,7 @@ export async function POST(_request: Request, context: { params: Promise<{ examI
         resposta: `As imagens são as ${imagens.length} página(s) da prova respondida por um aluno, na ordem. Pré-corrija cada questão do barema.`,
         imagens,
         maxTokens: 12000,
+        semRaciocinio: true,
       });
     } catch (error) {
       if (error instanceof ErroRevisaoIA && error.resultado) {

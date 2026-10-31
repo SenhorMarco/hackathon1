@@ -32,9 +32,11 @@ export interface PedidoCorrecao {
   respostasTexto?: RespostaTexto[];
   imagens?: Imagem[];
   maxTokens?: number;
+  /** Desliga o raciocínio estendido do modelo para caber no tempo da Vercel. */
+  semRaciocinio?: boolean;
 }
 
-export async function corrigirAluno({ cliente, modelo, analise, barema, resposta, respostasTexto, imagens, maxTokens }: PedidoCorrecao): Promise<CorrecaoAluno> {
+export async function corrigirAluno({ cliente, modelo, analise, barema, resposta, respostasTexto, imagens, maxTokens, semRaciocinio }: PedidoCorrecao): Promise<CorrecaoAluno> {
   const erros = validarBarema(barema);
   if (erros.length) throw new ErroRevisaoIA(erros);
   const dados = { analise, barema, resposta, respostasTexto };
@@ -46,6 +48,7 @@ export async function corrigirAluno({ cliente, modelo, analise, barema, resposta
     texto: `Pré-corrija usando os dados fornecidos:\n${JSON.stringify(dados)}`,
     imagens,
     maxTokens,
+    semRaciocinio,
   });
   const falhas = validarCorrecao(resultado, barema, respostasTexto);
   if (falhas.length) throw new ErroRevisaoIA(falhas, resultado);

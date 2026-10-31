@@ -72,6 +72,7 @@ export async function agruparQuestao({ cliente, modelo, questao, barema, respost
     sistema: PROMPT_AGRUPAMENTO,
     texto: `Agrupe as respostas da questão ${questao.numero}:\n${JSON.stringify(dados)}`,
     maxTokens,
+    semRaciocinio: true,
   });
   const falhas = validarAgrupamento(resultado, barema, respostas.map(r => r.id));
   if (falhas.length) throw new ErroRevisaoIA(falhas, resultado);

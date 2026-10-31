@@ -56,5 +56,6 @@ export function gerarFeedback({ cliente, modelo, analise, barema, questoes, maxT
     sistema: PROMPT_FEEDBACK,
     texto: `Escreva a devolutiva do aluno com base nesta correção:\n${JSON.stringify(dados)}`,
     maxTokens: maxTokens ?? 6000,
+    semRaciocinio: true,
   });
 }

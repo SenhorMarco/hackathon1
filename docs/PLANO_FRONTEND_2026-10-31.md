@@ -5,15 +5,15 @@
 - [Kanban LEPV](https://app.notion.com/p/544cdd631211837a9be901bd60f33a8a): leitura de todos os 39 cartões, com 16 Feito, 7 Fazendo e 16 A fazer. Esses números descrevem o quadro consultado; não medem cobertura do código.
 - [Regras RN01–RN20](https://github.com/SenhorMarco/hackathon1/blob/main/docs/REGRAS_DE_NEGOCIO.md): branch `docs/regras-de-negocio` mesclada e publicada na `main` no commit `93b6245`, por autorização do usuário.
 - Base da implementação: `b010cd7`, atualizada do GitHub por fast-forward. Os documentos locais idênticos aos da branch foram preservados em `tmp/regras-antes-merge` antes da mesclagem.
-- O checkpoint atual está na branch `feat/revisao-individual-mvp`. O agente principal fará o commit e, depois da validação, o push/merge. Este documento não afirma que já foi publicado ou implantado. A área do aluno e o envio/prazos continuam com o colega; nenhum arquivo dessa área foi alterado neste trabalho.
+- O checkpoint `a22f4d7` está commitado e publicado na branch `feat/revisao-individual-mvp`. A branch também integrou, sem conflitos, o commit `edea0e7` publicado pelo colega na `main`, que traz o portal de envio do aluno. Essa integração está em validação antes do merge na `main`; não afirmar que o merge já ocorreu.
 
 ## Decisão de prioridade
 
 1. **Revisão individual e liberação do professor.** O cartão [Integrar a tela de grupos](https://app.notion.com/p/e79cdd631211834e883a81ff5a2dc202) está Fazendo. Sua descrição antiga falava em aprovar grupos, mas a atualização do próprio cartão e RN15–RN16 exigem revisão individual. Esta entrega implementa esse fluxo.
 2. **Dados reais nos resultados.** “Notas e resultados” usava `Exam.responses`, vazio nas provas carregadas do servidor. O [relatório simples](https://app.notion.com/p/085cdd631211833f8bed815ffd6903cd), embora P1 no quadro, precisa de dados confiáveis antes de novos gráficos. A tabela e o CSV agora usam o endpoint real de revisão e somente notas validadas.
-3. **Envio pelo aluno, prazo e substituição.** O cartão [Acesso do aluno e envio da própria prova](https://app.notion.com/p/40acdd631211817fb89ecb1fc5412d0e) já está Fazendo. Login e consulta de devolutivas existem; envio e substituição ainda não estavam na main consultada. O colega deve coordenar permissões e identidade no servidor com RN04–RN07. Nenhum arquivo da área do aluno foi alterado nesta entrega.
+3. **Portal do aluno integrado; prazo ainda parcial.** O cartão [Acesso do aluno e envio da própria prova](https://app.notion.com/p/40acdd631211817fb89ecb1fc5412d0e) já está Fazendo. O commit `edea0e7`, publicado pelo colega e integrado nesta branch, adiciona seleção de turma/prova, envio e substituição autenticados. `src/lib/aluno/portal.ts` lê `provas.prazo_envio` quando definido; sem prazo, a prova aceita envios enquanto seu status permitir. Ainda faltam a configuração do prazo na interface do professor e a exceção individual após o prazo.
 4. **Pendências e versionamento.** Preservar transcrições não associadas, permitir associação manual segura e vincular a devolutiva aos dados revisados. Permanecem mudanças de barema e atualização pós-publicação.
-5. **Polimento e entrega.** Teste integrado no deploy com contas e arquivos de teste, após integrar o trabalho dos colegas. Vídeo e README vêm depois do fluxo demonstrável.
+5. **Polimento e entrega.** Validar o portal integrado com contas e arquivos de teste antes do merge na `main`; o fluxo de prazo e exceção ainda precisa de implementação. Vídeo e documentação final vêm depois do fluxo demonstrável.
 
 ## Implementado e validado localmente
 
@@ -51,6 +51,13 @@
 - Média somente das provas completas, com denominador e indicação de cobertura parcial. Resultado validado e resultado liberado têm rótulos distintos.
 - CSV escapa aspas e neutraliza valores textuais que poderiam ser interpretados como fórmulas.
 
+### Portal do aluno integrado — RN04 e RN06 parcial
+
+- O portal `/aluno` mostra as turmas relacionadas ao e-mail do aluno autenticado, permite escolher turma/prova, enviar um PDF ou até dez imagens e consultar devolutivas publicadas.
+- O envio associa a submissão ao aluno autenticado. Uma nova tentativa substitui a anterior enquanto a prova aceita envios; respostas de correção anteriores são apagadas para que o professor refaça a avaliação.
+- O servidor aplica o campo opcional `provas.prazo_envio`. Sem prazo, recebe envios enquanto o status da prova permitir; com prazo, recusa depois do horário configurado.
+- A integração veio do commit do colega `edea0e7`; está na branch de trabalho e em validação antes do merge na `main`, sem atribuí-la ao trabalho de revisão individual deste checkpoint.
+
 ## Pendências que impedem declarar o MVP inteiro concluído
 
 - [Associação manual e leitura](https://app.notion.com/p/40acdd631211817c9694f10d4bc0861a): preservação de transcrições sem número/fora do barema/duplicadas, associação manual com nova revisão e cadastro manual de transcrição após conferência estão implementados. A prova continua bloqueada até todas as questões terem resposta única e validada.
@@ -60,7 +67,7 @@
 - [Bloqueio de liberação](https://app.notion.com/p/40acdd6312118146be3cebed84a9363f): completude, aprovação textual e snapshot de origem (barema, análise, arquivos e notas/comentários) são verificados. Continua faltando transação real que feche a janela de concorrência entre rotas; não afirmar que revisões simultâneas são atomicamente serializadas.
 - RN17 continua pendente: alterações de barema não disparam invalidação/aviso completo das sugestões e correções potencialmente afetadas.
 - RN19 continua pendente: edição de uma nota após publicação e indicação de atualização na devolutiva do aluno ainda não estão implementadas; atualmente as respostas publicadas são somente leitura.
-- Envio próprio do aluno e controle de prazo continuam em trabalho do colega, sem alteração nesta entrega.
+- Portal de envio e substituição do aluno já integrado nesta branch pelo commit do colega `edea0e7`. Continuam pendentes a interface/configuração do prazo pelo professor e a exceção individual para permitir reenvio depois do prazo. Sem coluna de prazo preenchida, envios permanecem abertos enquanto o estado da prova os aceitar.
 - A aprovação de novos critérios para caminhos alternativos continua dependendo da política de revisão do barema. A tela sinaliza a alternativa e mostra o critério sugerido, sem prometer aprovação automática.
 - Gráficos longitudinais e comparação de dificuldade prevista × observada ficam após esses P0. Não usar estatísticas vazias ou sugestões fixas como evidência pedagógica real.
 
@@ -80,6 +87,6 @@ npm run build
 
 O teste de navegador está em `scripts/testar-revisao-browser.mjs`; requer Playwright, Chromium/Chrome e esbuild. Aceita `PLAYWRIGHT_MODULE`, `ESBUILD_MODULE` (nomes de módulos ou URLs `file://`) e `BROWSER_CHANNEL=chrome`. Usa o componente real com API simulada, sem dados de produção. Cobre desktop e celular, navegação com questão vazia, validação individual, leitura incerta, filtros, CSV, liberação, consulta após publicação e falha/repetição de carregamento. Capturas locais ficam em `tmp/review-qa/`.
 
-O teste `testar-pendencias.mjs` verifica que transcrições identificadas continuam intactas e que número zero, fora do barema e duplicatas recebem chaves negativas únicas sem nota final. O teste de handlers usa banco em memória e não substitui a validação integrada no Supabase nem os testes de autorização em `scripts/testar-contas.mjs`. O build local também não comprova deploy.
+O teste `testar-pendencias.mjs` verifica que transcrições identificadas continuam intactas e que número zero, fora do barema e duplicatas recebem chaves negativas únicas sem nota final. O teste de handlers usa banco em memória e não substitui a validação integrada no Supabase nem os testes de autorização em `scripts/testar-contas.mjs`. O build local também não comprova deploy. A integração do portal está em validação na branch antes do merge na `main`.
 
 Neste Windows, a primeira tentativa de Turbopack falhou ao iniciar worker de CSS dentro do sandbox. Após permitir processos locais e remover somente `.next/cache/turbopack`, o build padrão passou; não foi alterado o compilador nem a configuração de produção.

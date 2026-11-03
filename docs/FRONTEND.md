@@ -43,11 +43,17 @@ A exportação CSV inclui uma coluna por questão, total validado e situação. 
 
 As operações do professor usam as APIs de servidor e Supabase. As rotas verificam sessão, papel e propriedade dos dados. Os arquivos são mantidos no bucket privado e acessados por links temporários. Configure as variáveis, schema e autenticação conforme [README.md](../README.md) e [docs/CONTAS.md](CONTAS.md). Os drafts de edição ainda não salvos não são compartilhados entre dispositivos.
 
+## Portal do aluno integrado
+
+O portal `/aluno` lista as turmas vinculadas ao e-mail da conta autenticada. O aluno escolhe a turma e a prova, envia um PDF ou até dez fotos de páginas e pode substituir o envio enquanto a prova aceitar respostas. A substituição invalida a correção anterior para nova revisão. Depois da liberação, o portal oferece a devolutiva publicada.
+
+O servidor lê o campo opcional `provas.prazo_envio`. Se não houver prazo, aceita envios enquanto o estado da prova permitir; após o encerramento do prazo ou da prova, rejeita o envio. A interface/configuração do prazo pelo professor e a exceção individual para reabrir após o prazo ainda estão pendentes.
+
 ## Limites conhecidos
 
 - **RN17 não implementada:** mudanças de barema não invalidam ou marcam automaticamente como desatualizadas as sugestões já produzidas, e não há aviso completo sobre notas afetadas.
 - **RN19 não implementada:** notas/feedback alterados após a liberação não têm fluxo completo de atualização da devolutiva nem indicação de alteração ao aluno.
-- O envio pelo próprio aluno e o controle de prazos estão sendo implementados em paralelo; esta interface não deve ser descrita como cobrindo esses requisitos.
+- O upload e a substituição do aluno estão integrados. O controle básico lê `provas.prazo_envio`; falta a interface do professor para configurar o prazo e a exceção individual de reenvio após o encerramento.
 
 ## Testes da revisão
 

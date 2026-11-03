@@ -38,7 +38,9 @@ Essas verificações sequenciais não oferecem transação única entre rotas co
 
 Turmas, alunos, provas, submissões, respostas e resultados do professor são persistidos no Supabase, sob controle de conta e propriedade. O bucket `provas` é privado; os links de arquivo são temporários. O localStorage mantém apenas estado auxiliar da interface e não substitui os registros do banco.
 
-Ainda não estão implementadas as regras **RN17** (invalidar/avisar quando o barema muda em relação a sugestões e notas já revisadas) e **RN19** (alteração pós-liberação atualizar a devolutiva e indicar ao aluno que houve mudança). O envio pelo próprio aluno e o gerenciamento de prazos estão em trabalho paralelo. Não trate essas regras como cobertas pelo MVP atual.
+O portal autenticado do aluno está integrado em `/aluno`: permite escolher turma e prova, enviar PDF ou fotos, substituir o envio enquanto a prova aceita respostas e consultar devolutivas publicadas. A identificação da conta usa o e-mail cadastrado pelo professor na turma. O campo opcional `provas.prazo_envio` é aplicado pelo servidor; sem prazo configurado, o envio continua aberto enquanto o estado da prova aceitar respostas. Ainda faltam a interface/configuração de prazo pelo professor e o fluxo de exceção individual após o prazo.
+
+Ainda não estão implementadas as regras **RN17** (invalidar/avisar quando o barema muda em relação a sugestões e notas já revisadas) e **RN19** (alteração pós-liberação atualizar a devolutiva e indicar ao aluno que houve mudança). Não trate essas regras como cobertas pelo MVP atual.
 
 ## Configuração do Supabase
 
@@ -53,7 +55,7 @@ O endpoint `/api/health` verifica a presença das configurações, o acesso às 
 
 Na aba de provas, PDF, PNG e JPEG podem ser enviados até 20 MB por arquivo. O envio da prova usa o Storage privado; a análise lê provas PDF ou imagem e sugere questões e barema. O fluxo de respostas aceita PDFs individuais ou conjuntos de imagens de um aluno. A sugestão de nome não cria associação: o professor escolhe o aluno e confirma. PDFs contendo provas de vários alunos não são separados automaticamente.
 
-O navegador envia arquivos diretamente ao bucket privado por URLs assinadas. A finalização verifica tamanho, conteúdo e vínculo antes de registrar prova/submissão. Uploads abandonados antes da finalização podem deixar objetos sem registro no bucket e exigem limpeza operacional. Para detalhes de configuração e fluxo, consulte [docs/FRONTEND.md](docs/FRONTEND.md) e [docs/CONTAS.md](docs/CONTAS.md).
+O navegador envia arquivos diretamente ao bucket privado por URLs assinadas. A finalização verifica tamanho, conteúdo e vínculo antes de registrar prova/submissão. Uploads abandonados antes da finalização podem deixar objetos sem registro no bucket e exigem limpeza operacional. O portal do aluno usa o mesmo Storage privado e vínculo autenticado; cada envio pode ser substituído enquanto a prova estiver aceitando arquivos. Para detalhes de configuração e fluxo, consulte [docs/FRONTEND.md](docs/FRONTEND.md) e [docs/CONTAS.md](docs/CONTAS.md).
 
 ## Testes de integração
 

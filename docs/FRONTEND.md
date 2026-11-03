@@ -45,7 +45,7 @@ As operações do professor usam as APIs de servidor e Supabase. As rotas verifi
 
 ## Portal do aluno integrado
 
-O portal `/aluno` lista as turmas vinculadas ao e-mail da conta autenticada. O aluno escolhe a turma e a prova, envia um PDF ou até dez fotos de páginas e pode substituir o envio enquanto a prova aceitar respostas. A substituição invalida a correção anterior para nova revisão. Depois da liberação, o portal oferece a devolutiva publicada.
+O portal `/aluno` lista as turmas vinculadas ao e-mail da conta autenticada. O aluno escolhe a turma e a prova. Antes de as questões estarem disponíveis, pode enviar um PDF ou até dez fotos da prova inteira; depois, pode enviar, substituir ou remover fotos por questão enquanto a prova aceitar respostas. A substituição invalida a correção anterior para nova revisão. Notas e comentários de respostas individualmente validadas aparecem questão por questão antes da liberação final; a devolutiva completa fica disponível após a publicação.
 
 O servidor lê o campo opcional `provas.prazo_envio`. Se não houver prazo, aceita envios enquanto o estado da prova permitir; após o encerramento do prazo ou da prova, rejeita o envio. A interface/configuração do prazo pelo professor e a exceção individual para reabrir após o prazo ainda estão pendentes.
 
@@ -53,7 +53,7 @@ O servidor lê o campo opcional `provas.prazo_envio`. Se não houver prazo, acei
 
 - **RN17 não implementada:** mudanças de barema não invalidam ou marcam automaticamente como desatualizadas as sugestões já produzidas, e não há aviso completo sobre notas afetadas.
 - **RN19 não implementada:** notas/feedback alterados após a liberação não têm fluxo completo de atualização da devolutiva nem indicação de alteração ao aluno.
-- O upload e a substituição do aluno estão integrados. O controle básico lê `provas.prazo_envio`; falta a interface do professor para configurar o prazo e a exceção individual de reenvio após o encerramento.
+- O envio da prova inteira e os envios, substituições e remoções por questão estão integrados. O portal também mostra notas e comentários validados por questão antes da liberação final. O controle básico lê `provas.prazo_envio`; falta a interface do professor para configurar o prazo e a exceção individual de reenvio após o encerramento.
 
 ## Testes da revisão
 

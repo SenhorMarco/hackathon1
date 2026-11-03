@@ -37,7 +37,7 @@ O MVP auxilia professores na correção de provas discursivas de exatas. A IA su
 
 ## Liberação e relatórios
 
-- **RN18.** A nota total e o feedback só podem ser liberados quando todas as respostas da prova tiverem sido validadas. Após isso, o professor realiza uma ação explícita de liberação.
+- **RN18.** A nota total e a devolutiva completa só podem ser liberadas quando todas as respostas da prova tiverem sido validadas. Após isso, o professor realiza uma ação explícita de liberação. **Atualização de 31/10 (decisão da equipe):** a nota e o comentário de cada questão aparecem para o aluno assim que o professor valida aquela questão, antes da liberação da prova inteira.
 - **RN19.** Se o professor alterar uma nota depois da divulgação, o aluno passa a ver a nota e o feedback atualizados, com indicação de que houve alteração.
 - **RN20.** Relatórios finais utilizam notas validadas. Se forem exibidos dados ainda sugeridos, devem ser identificados como preliminares. Um relatório factual baseado em dados não é, por isso, uma sugestão.
 

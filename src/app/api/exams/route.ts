@@ -2,6 +2,7 @@ import { account, professorRoute } from '@/lib/auth/server';
 import { z } from 'zod';
 import { readUpload, type UploadTicket } from '@/lib/uploads/direct';
 import { serializeProva } from '@/lib/db/exams';
+import { withExamResults } from '@/lib/db/exam-results';
 import { BUCKET_PROVAS, db } from '@/lib/db/server';
 import { apiError, privateHeaders, serverError, uuid } from '@/lib/db/api';
 import { detectProva, MAX_PROVA_BYTES, validateProva } from '@/lib/uploads/validation';
@@ -23,7 +24,7 @@ async function handleGET(request: Request) {
     if(!room)return apiError('Turma não encontrada.',404);
     const { data, error } = await db().from('provas').select('*').eq('turma_id', turmaId).order('created_at', { ascending: false });
     if (error) throw error;
-    return Response.json({ provas: data.map(serializeProva) }, { headers: privateHeaders });
+    return Response.json({ provas: await withExamResults(data.map(serializeProva)) }, { headers: privateHeaders });
   } catch (error) { return serverError(error); }
 }
 

@@ -49,6 +49,12 @@ O portal `/aluno` lista as turmas vinculadas ao e-mail da conta autenticada. O a
 
 O servidor lê o campo opcional `provas.prazo_envio`. Se não houver prazo, aceita envios enquanto o estado da prova permitir; após o encerramento do prazo ou da prova, rejeita o envio. A interface/configuração do prazo pelo professor e a exceção individual para reabrir após o prazo ainda estão pendentes.
 
+## Média e histórico do painel
+
+O painel carrega as respostas persistidas junto com as provas, tanto na abertura quanto na atualização da turma. A média considera somente submissões completas e individualmente validadas, com as mesmas verificações de completude do relatório. Respostas ausentes não viram zero; uma nota zero explicitamente validada entra normalmente. Cartão e gráfico indicam quantos alunos têm notas completas. Depois da liberação, o painel atualiza os resultados do servidor.
+
+Verificação local: `node scripts/testar-dashboard.mjs` cobre médias, zero real, ausência, cobertura parcial, duplicatas, limites e alunos com referência local anterior.
+
 ## Limites conhecidos
 
 - **RN17 não implementada:** mudanças de barema não invalidam ou marcam automaticamente como desatualizadas as sugestões já produzidas, e não há aviso completo sobre notas afetadas.

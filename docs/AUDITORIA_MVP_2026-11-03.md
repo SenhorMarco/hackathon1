@@ -57,3 +57,11 @@
 3. **Investigar a atualização da tabela logo após liberação:** observação transitória; testar novamente antes de concluir que há defeito persistente.
 
 A inspeção de código foi delegada a um subagente; as verificações HTTP e de navegador acima foram executadas pelo agente principal. A conclusão confirma o fluxo principal na prova sintética, não certifica o MVP inteiro. Nenhum arquivo de implementação foi alterado nesta auditoria.
+
+## Correção posterior — média do painel
+
+Em 04/11, a falha da média foi corrigida no commit `c93da05`. O carregamento inicial e a atualização da turma passam a trazer respostas completas e validadas do servidor. O painel distingue zero revisado de ausência de nota e informa a cobertura de alunos. A liberação também solicita atualização dos resultados do painel.
+
+Build, TypeScript, lint e testes de revisão/dashboard passaram; os testes HTTP de permissões também passaram. Os testes de cálculo incluem média 10, zero real, notas ausentes, cobertura parcial, duplicatas, teto por questão e referência local de alunos.
+
+Após a Vercel indicar publicação concluída, a conta de professor recarregou a mesma turma de teste: o cartão e o gráfico passaram a mostrar **10,0**, com **1/1 aluno**, em acordo com o relatório detalhado. Evidência local: `tmp/deploy-qa-2026-11-03/07-dashboard-media-corrigida.jpg`. A inconsistência transitória imediatamente após liberação permanece como investigação separada; não foi repetida nesta validação.

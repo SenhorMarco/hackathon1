@@ -1,6 +1,6 @@
-# Auditoria do MVP — 03/11/2026
+# Auditoria do MVP — atualização de 04/11/2026
 
-**Escopo:** inspeção do código em `9671668` e execução assistida no deploy `https://hackathon1-blond.vercel.app`. O commit exato servido pelo deploy não foi identificado. A validação ainda não percorreu todas as etapas ponta a ponta. Os itens abaixo distinguem lacunas verificáveis no código de observações no ambiente real.
+**Escopo:** inspeção do código em `9671668` e execução assistida no deploy `https://hackathon1-blond.vercel.app`. O commit exato servido pelo deploy não foi identificado. O fluxo principal professor → aluno → correção → liberação → devolutiva foi concluído no deploy em prova sintética. Isso não cobre todos os requisitos nem todos os cenários de borda. Os itens abaixo distinguem lacunas verificáveis no código de observações no ambiente real.
 
 ## Lacunas confirmadas no código
 
@@ -18,17 +18,21 @@
 
 7. **Upload parcial de fotos invalida a submissão inteira.** Uma troca de fotos por questão preserva os arquivos das demais questões (`src/app/api/aluno/provas/[provaId]/envio/route.ts:104-106`), mas `salvarArquivos` apaga todas as respostas da submissão e limpa toda a correção (`envio/route.ts:27-38`). O comportamento parece mais amplo do que a troca de uma questão; verificar se é a decisão desejada, pois invalida sugestões/validações de páginas não substituídas.
 
-## Verificações ponta a ponta pendentes
+## Verificações ponta a ponta
 
 - [x] Concluir análise real da prova e confirmar estado/barema gravados, inclusive após recarregar a página.
-- [ ] Percorrer envio do aluno, associação de aluno/questão, pré-correção, revisão individual e tratamento de resposta ausente/ilegível.
+- [x] Envio autenticado do aluno e vínculo das duas fotos às questões corretas foram confirmados após recarregar o portal.
+- [x] Executar pré-correção por IA, validar respostas uma a uma, revisar devolutiva, liberar e conferir nota/devolutiva na conta do aluno.
 - [ ] Demonstrar caso de resposta duplicada sem questão livre e confirmar se existe recuperação operacional além de reprocessar a submissão.
 - [ ] Substituir foto de uma questão após validação e confirmar quais respostas e devolutivas ficam invalidadas.
-- [ ] Confirmar visibilidade de nota/comentário por questão antes da liberação, bloqueio de total/devolutiva completa até a validação total e liberação explícita.
-- [ ] Confirmar que relatórios exibem somente notas validadas ou identificam dados preliminares.
+- [x] Confirmar pelo professor que cada validação atualiza a contagem; a liberação ficou bloqueada enquanto Q2 estava pendente e também enquanto faltava revisar a devolutiva. Liberação explícita concluiu o fluxo.
+- [x] Confirmar no relatório final nota validada e liberada. A divergência observada no dashboard está registrada abaixo.
 - [ ] Testar prazo e exceção individual quando houver interface de configuração/autorização; hoje esses controles não estão implementados no código.
+- [ ] Testar se o aluno vê a nota e o comentário de Q1 antes da liberação geral (o estado parcial foi visto pelo professor; a conta de aluno só foi conferida após liberação).
+- [ ] Testar resposta ilegível/ausente, duplicidade sem questão livre, substituição de foto depois da validação, concorrência e isolamento real entre múltiplas contas.
+- [ ] Executar agrupamento por abordagem (funcionalidade opcional, não exercitada nesta sessão).
 
-## Evidência de execução no deploy (fluxo ainda parcial)
+## Evidência de execução no deploy
 
 - `/api/health` respondeu 200 e verificou banco/Storage.
 - Acesso anônimo a `GET /api/exams` e chamadas anônimas a criação de turma/prova, liberação e envio do aluno retornaram 401.
@@ -36,7 +40,20 @@
 - A IA identificou as duas questões com pontuação máxima de 5 cada: equação `2x + 3 = 11` e área de retângulo de lados 3 cm e 4 cm. Respostas de referência corretas: `x = 4` e `12 cm²`.
 - O professor alterou um critério da questão 1, confirmou o barema e recarregou a página. Turma, prova, estado Aguardando respostas e critério alterado permaneceram salvos.
 - Sem submissões, a aba Correção informa Aguardando as provas dos alunos e não oferece liberação.
+- A conta de aluno de teste foi cadastrada e vinculada à turma; o portal abriu a prova sintética `5360ce3d-b9de-41c9-8eae-e33af795a69a`.
+- Envio pela interface: após `resposta-q1.png`, o portal indicou 1/2 questões enviadas; após `resposta-q2.png`, indicou 2/2 e Tudo enviado. O contador permaneceu em 0/2 corrigidas e a nota apareceu como `—`. Após recarregar, os dois arquivos continuaram salvos e vinculados às questões corretas. Evidência visual: `tmp/deploy-qa-2026-11-03/02-aluno-envio-completo.jpg`.
+- Na sessão do professor, a submissão mostrou o aluno confirmado e as duas imagens. A IA transcreveu corretamente as respostas e sugeriu 5/5 em ambas. Uma tentativa de atribuir 6/5 foi rejeitada com a mensagem “Informe uma nota entre 0 e 5”. Q1 foi validada com nota 5 e comentário editado; a contagem mostrou 1/2 e Q2 pendente, com liberação bloqueada. Depois de validar Q2 com 5 e comentário editado, a tela mostrou 2/2 respostas e 1 prova completa, mas manteve a liberação bloqueada até a revisão da devolutiva.
+- A IA gerou a devolutiva completa. O professor editou o resumo e a dica da Q2 e aprovou o texto; o indicador mostrou zero textos pendentes. O CSV baixado antes da liberação continha `5, 5, 10, Validado · não liberado`. Ao liberar, a interface confirmou sucesso; após recarregar, a prova apareceu como Concluída e o relatório mostrou 10/10 Liberado.
+- Na conta do aluno, o portal mostrou 1 prova corrigida, devolutiva disponível e 10/10. A prova mostrou 2/2 corrigidas e 10/10, sem controles para enviar, remover ou substituir arquivos. A devolutiva apresentou os textos finais, incluindo as duas edições do professor, e os gabaritos dos exercícios estavam corretos. Evidências: `tmp/deploy-qa-2026-11-03/05-devolutiva-aluno.jpg` e `06-aluno-nota-final.jpg`.
+- **Inconsistência transitória a investigar:** imediatamente após clicar em Liberar, a mensagem de sucesso e o cabeçalho Concluída apareceram, mas a tabela ainda indicava “não liberado” durante a observação. Após recarregar, relatório e portal mostraram o estado liberado corretamente. Não há evidência de falha persistente. Evidências: `03` (liberação) e `04` (dashboard), em `tmp/deploy-qa-2026-11-03/`.
+- **Falha observada no dashboard:** após recarregar, o gráfico Média da turma mostrou 0,0 e o cartão de média mostrou `—`, apesar de o relatório da prova mostrar 10/10 liberado. O código de `HistoryChart` calcula a média a partir de `exam.responses` (`src/components/workspace.tsx:115`), enquanto a conversão de provas persistidas inicializa `responses: {}` (`src/lib/exams.ts:10`). Corrigir primeiro essa leitura de dados; o relatório detalhado consultado pelo professor apresentou o resultado correto.
 - Dados sintéticos mantidos: turma `TESTE MVP 03-11-2026`, prova `TESTE MVP — Duas questões — 03/11`. Arquivos locais e evidência visual em `tmp/deploy-qa-2026-11-03/` (ignorado pelo Git).
-- Próxima etapa depende da criação/login da conta de aluno de teste pelo usuário, para vincular o e-mail e executar o envio autenticado. Nenhuma senha foi registrada no relatório.
+- Nenhum e-mail pessoal ou senha do aluno foi registrado no relatório.
 
-A inspeção de código foi delegada a um subagente; as verificações HTTP e de navegador acima foram executadas pelo agente principal. Nenhum arquivo de implementação foi alterado nesta auditoria.
+## Prioridades
+
+1. **P0 — corrigir o dashboard:** carregar notas persistidas para média da turma e histórico, e conferir que os números coincidem com os relatórios. A exibição de zero como resultado real deve ser corrigida antes de confiar no painel para decisões pedagógicas.
+2. **P0 — tratar as lacunas funcionais de RN01, RN05/RN06, RN08, RN17 e RN19 listadas acima.** Elas permanecem mesmo com o fluxo principal concluído.
+3. **Investigar a atualização da tabela logo após liberação:** observação transitória; testar novamente antes de concluir que há defeito persistente.
+
+A inspeção de código foi delegada a um subagente; as verificações HTTP e de navegador acima foram executadas pelo agente principal. A conclusão confirma o fluxo principal na prova sintética, não certifica o MVP inteiro. Nenhum arquivo de implementação foi alterado nesta auditoria.

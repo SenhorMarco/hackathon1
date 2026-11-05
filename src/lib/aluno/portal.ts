@@ -2,6 +2,8 @@ import 'server-only';
 import { account } from '@/lib/auth/server';
 import { db } from '@/lib/db/server';
 import { questaoDoCaminho } from './questoes';
+import { acceptsSubmission, effectiveDeadline } from '@/lib/deadlines';
+export { STATUS_RECEBE_ENVIO } from '@/lib/deadlines';
 
 export type Conta = NonNullable<Awaited<ReturnType<typeof account>>>;
 
@@ -9,7 +11,7 @@ export type Conta = NonNullable<Awaited<ReturnType<typeof account>>>;
  * A prova aparece para o aluno assim que o professor a envia e recebe respostas
  * até as notas serem liberadas. A correção só começa depois do barema confirmado.
  */
-export const STATUS_RECEBE_ENVIO = ['rascunho', 'analisada', 'barema_pronto', 'corrigindo'];
+
 
 export type SituacaoProva = 'aguardando_envio' | 'enviada' | 'em_correcao' | 'devolutiva' | 'encerrada' | 'prazo_encerrado';
 
@@ -46,12 +48,6 @@ export interface TurmaDoAluno {
   provas: ProvaDoAluno[];
 }
 
-/** Prazo opcional (coluna provas.prazo_envio); sem prazo, a prova fica aberta enquanto recebe envios. */
-function prazoAberto(prova: Record<string, unknown>) {
-  const prazo = typeof prova.prazo_envio === 'string' ? Date.parse(prova.prazo_envio) : NaN;
-  return Number.isNaN(prazo) || prazo > Date.now();
-}
-
 /** Registros de aluno ligados ao e-mail da conta (um por turma). */
 export async function alunosDaConta(conta: Conta) {
   const { data, error } = await db().from('alunos').select('id, turma_id, nome').eq('email', conta.email.toLowerCase());
@@ -66,7 +62,7 @@ export async function provaDoAluno(conta: Conta, provaId: string) {
   if (!prova?.turma_id) return null;
   const aluno = (await alunosDaConta(conta)).find(a => a.turma_id === prova.turma_id);
   if (!aluno) return null;
-  return { prova, aluno, aceitaEnvio: STATUS_RECEBE_ENVIO.includes(prova.status) && prazoAberto(prova) };
+  return { prova, aluno, aceitaEnvio: acceptsSubmission(prova, aluno.id), prazo: effectiveDeadline(prova, aluno.id) };
 }
 
 export async function carregarPortal(conta: Conta): Promise<TurmaDoAluno[]> {
@@ -102,7 +98,8 @@ export async function carregarPortal(conta: Conta): Promise<TurmaDoAluno[]> {
       .map(p => {
         const envio = envios.data?.find(e => e.prova_id === p.id);
         const devolutiva = envio ? devolutivas.data?.find(d => d.submissao_id === envio.id)?.token ?? null : null;
-        const aberta = STATUS_RECEBE_ENVIO.includes(p.status) && prazoAberto(p);
+        const aluno = alunos.find(a => a.turma_id === p.turma_id)!;
+        const aberta = acceptsSubmission(p, aluno.id);
         const valores = new Map<number, number>((p.barema?.questoes || []).map((q: { numero: number; valorTotal: number }) => [q.numero, q.valorTotal]));
         const validadas = envio ? (respostas.data || []).filter(r => r.submissao_id === envio.id && notaValidada(r, valores.get(r.numero))) : [];
         const situacao: SituacaoProva = devolutiva ? 'devolutiva'
@@ -111,7 +108,7 @@ export async function carregarPortal(conta: Conta): Promise<TurmaDoAluno[]> {
           : envio ? 'enviada'
           : aberta ? 'aguardando_envio' : 'prazo_encerrado';
         return {
-          id: p.id, titulo: p.titulo, data: p.data_avaliacao ?? null, prazo: typeof p.prazo_envio === 'string' ? p.prazo_envio : null,
+          id: p.id, titulo: p.titulo, data: p.data_avaliacao ?? null, prazo: effectiveDeadline(p, aluno.id),
           situacao, podeEnviar: aberta, devolutiva,
           envio: envio ? { id: envio.id, arquivos: envio.arquivo_nomes || [], enviadoEm: envio.created_at } : null,
           questoes: Array.isArray(p.analise?.questoes) ? p.analise.questoes.length : 0,

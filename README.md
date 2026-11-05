@@ -87,7 +87,7 @@ cp .env.example .env.local   # preencha as variáveis
 npm run dev
 ```
 
-No SQL Editor do Supabase, rode `supabase/schema.sql` e depois `supabase/contas.sql`. Detalhes de autenticação em [docs/CONTAS.md](docs/CONTAS.md). Nunca faça commit do `.env.local` nem coloque a chave `service_role` em variáveis `NEXT_PUBLIC_*`.
+No SQL Editor do Supabase, rode `supabase/schema.sql`, depois `supabase/contas.sql` e `supabase/prazos.sql`. Detalhes de autenticação em [docs/CONTAS.md](docs/CONTAS.md). Nunca faça commit do `.env.local` nem coloque a chave `service_role` em variáveis `NEXT_PUBLIC_*`.
 
 Verificações:
 
@@ -105,7 +105,7 @@ npx tsx scripts/testar-supabase.mts
 
 - Testado principalmente com provas de matemática digitadas e fotos nítidas; letra de mão pouco legível exige conferência do professor.
 - A análise de uma prova longa pode levar alguns minutos.
-- A interface do professor para configurar prazo por prova e a exceção individual para reabrir envios após o prazo ainda estão pendentes; sem prazo configurado, os envios seguem o estado da prova.
+- Prazos e exceções individuais exigem a migração `supabase/prazos.sql` antes de publicar esta versão. O professor os configura na aba Respostas. Sem prazo, os envios seguem o estado da prova; a publicação sempre encerra os envios.
 - Mudanças de barema ainda não invalidam automaticamente sugestões existentes (RN17); alterações após liberação ainda não atualizam a devolutiva nem avisam o aluno (RN19).
 - Histórico do aluno ao longo do ano e plano de estudo adaptativo estão no roadmap.
 

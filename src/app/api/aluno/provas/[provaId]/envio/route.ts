@@ -24,18 +24,16 @@ function questoesDaProva(prova: { analise?: { questoes?: { numero: number }[] } 
   return new Set((prova.analise?.questoes || []).map(q => q.numero));
 }
 
-/** Grava a nova lista de arquivos; a correção anterior fica desatualizada (RN06, RN07). */
-async function salvarArquivos(anterior: { id: string; arquivo_paths: string[] }, arquivos: { path: string; nome: string }[], nomeAluno: string) {
-  const { error: delError } = await db().from('respostas').delete().eq('submissao_id', anterior.id);
-  if (delError) throw delError;
-  const { data, error } = await db().from('submissoes').update({
-    arquivo_paths: arquivos.map(a => a.path), arquivo_nomes: arquivos.map(a => a.nome),
-    status: 'enviada', correcao: null, erro: null, nome_lido: nomeAluno,
-  }).eq('id', anterior.id).select('id, status, arquivo_paths, arquivo_nomes, created_at').single();
-  if (error) throw error;
-  const removidos = anterior.arquivo_paths.filter(p => !arquivos.some(a => a.path === p));
-  if (removidos.length) await db().storage.from(BUCKET_PROVAS).remove(removidos);
-  return data;
+/** Confere o prazo e serializa a troca com mudanças do professor. */
+async function confirmar(provaId: string, alunoId: string, id: string, anteriores: string[] | null, arquivos: {path:string;nome:string}[], nome: string, remover = false) {
+  const {data,error} = await db().rpc('confirmar_envio_aluno', {p_prova:provaId,p_aluno:alunoId,p_envio:id,p_anteriores:anteriores,p_paths:arquivos.map(a=>a.path),p_nomes:arquivos.map(a=>a.nome),p_nome:nome,p_remover:remover});
+  if(error) {
+    if(error.code==='P0001') return {response:erro('O prazo encerrou, a autorização mudou ou o envio foi atualizado. Recarregue a página.',409)};
+    throw error;
+  }
+  const removidos = (anteriores || []).filter(p=>!arquivos.some(a=>a.path===p));
+  if(removidos.length) await db().storage.from(BUCKET_PROVAS).remove(removidos);
+  return {envio:data};
 }
 
 /**
@@ -103,16 +101,14 @@ export const POST = alunoRoute(async (request: Request, context: Contexto, conta
     const antigos = (anterior.arquivo_paths as string[]).map((path, i) => ({ path, nome: (anterior.arquivo_nomes as string[])[i] || path }));
     // Prova inteira substitui tudo; foto de questão substitui só aquela questão (e descarta um envio inteiro antigo).
     const arquivos = numero !== null ? juntarFotos(antigos, novos, numero) : novos;
-    const envio = await salvarArquivos(anterior, arquivos, conta.nome);
-    return Response.json({ envio, substituido: true }, { headers: privateHeaders });
+    const result = await confirmar(provaId, acesso.aluno.id, anterior.id, anterior.arquivo_paths, arquivos, conta.nome);
+    if(result.response) return result.response;
+    return Response.json({ envio:result.envio, substituido: true }, { headers: privateHeaders });
   }
 
-  const { data, error } = await db().from('submissoes').insert({
-    id: ticket.id, prova_id: provaId, aluno_id: acesso.aluno.id,
-    arquivo_paths: novos.map(n => n.path), arquivo_nomes: novos.map(n => n.nome), status: 'enviada', nome_lido: conta.nome,
-  }).select('id, status, arquivo_paths, arquivo_nomes, created_at').single();
-  if (error) throw error;
-  return Response.json({ envio: data, substituido: false }, { status: 201, headers: privateHeaders });
+  const result = await confirmar(provaId, acesso.aluno.id, ticket.id, null, novos, conta.nome);
+  if(result.response) return result.response;
+  return Response.json({ envio:result.envio, substituido: false }, { status:201,headers:privateHeaders });
 });
 
 export const DELETE = alunoRoute(async (request: Request, context: Contexto, conta) => {
@@ -127,13 +123,7 @@ export const DELETE = alunoRoute(async (request: Request, context: Contexto, con
   const antigos = (anterior.arquivo_paths as string[]).map((path, i) => ({ path, nome: (anterior.arquivo_nomes as string[])[i] || path }));
   const restantes = antigos.filter(a => questaoDoCaminho(a.path) !== numero);
   if (restantes.length === antigos.length) return erro('Esta questão não tem foto enviada.', 404);
-  if (!restantes.length) {
-    // Sem nenhuma foto, o envio deixa de existir para o professor.
-    const { error } = await db().from('submissoes').delete().eq('id', anterior.id);
-    if (error) throw error;
-    await db().storage.from(BUCKET_PROVAS).remove(antigos.map(a => a.path));
-    return Response.json({ envio: null }, { headers: privateHeaders });
-  }
-  const envio = await salvarArquivos(anterior, restantes, conta.nome);
-  return Response.json({ envio }, { headers: privateHeaders });
+  const result = await confirmar(provaId, acesso.aluno.id, anterior.id, anterior.arquivo_paths, restantes, conta.nome, !restantes.length);
+  if(result.response) return result.response;
+  return Response.json({envio:result.envio},{headers:privateHeaders});
 });

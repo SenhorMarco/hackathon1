@@ -50,7 +50,7 @@ async function Conteudo({ params }: { params: Promise<{ provaId: string }> }) {
 
   return <AlunoShell name={user.nome} title="Prova">
     <AlunoProva
-      prova={{ id: prova.id, titulo: prova.titulo, data: prova.data_avaliacao ?? null, prazo: typeof prova.prazo_envio === 'string' ? prova.prazo_envio : null }}
+      prova={{ id: prova.id, titulo: prova.titulo, data: prova.data_avaliacao ?? null, prazo: acesso.prazo }}
       aceitaEnvio={aceitaEnvio}
       questoes={questoes}
       arquivosInteiros={arquivos.filter(a => a.numero === null).map(({ index, nome }) => ({ index, nome }))}

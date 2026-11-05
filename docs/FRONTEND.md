@@ -47,7 +47,7 @@ As operações do professor usam as APIs de servidor e Supabase. As rotas verifi
 
 O portal `/aluno` lista as turmas vinculadas ao e-mail da conta autenticada. O aluno escolhe a turma e a prova. Antes de as questões estarem disponíveis, pode enviar um PDF ou até dez fotos da prova inteira; depois, pode enviar, substituir ou remover fotos por questão enquanto a prova aceitar respostas. A substituição invalida a correção anterior para nova revisão. Notas e comentários de respostas individualmente validadas aparecem questão por questão antes da liberação final; a devolutiva completa fica disponível após a publicação.
 
-O servidor lê o campo opcional `provas.prazo_envio`. Se não houver prazo, aceita envios enquanto o estado da prova permitir; após o encerramento do prazo ou da prova, rejeita o envio. A interface/configuração do prazo pelo professor e a exceção individual para reabrir após o prazo ainda estão pendentes.
+O servidor lê o campo opcional `provas.prazo_envio`. Se não houver prazo, aceita envios enquanto o estado da prova permitir; após o encerramento do prazo ou da prova, rejeita o envio. Na aba Respostas, o professor configura o prazo e pode prorrogá-lo para um aluno específico, ou revogar a exceção. Datas são exibidas no fuso do navegador e enviadas como instantes UTC. Exige a migração `supabase/prazos.sql`.
 
 ## Média e histórico do painel
 
@@ -59,7 +59,7 @@ Verificação local: `node scripts/testar-dashboard.mjs` cobre médias, zero rea
 
 - **RN17 não implementada:** mudanças de barema não invalidam ou marcam automaticamente como desatualizadas as sugestões já produzidas, e não há aviso completo sobre notas afetadas.
 - **RN19 não implementada:** notas/feedback alterados após a liberação não têm fluxo completo de atualização da devolutiva nem indicação de alteração ao aluno.
-- O envio da prova inteira e os envios, substituições e remoções por questão estão integrados. O portal também mostra notas e comentários validados por questão antes da liberação final. O controle básico lê `provas.prazo_envio`; falta a interface do professor para configurar o prazo e a exceção individual de reenvio após o encerramento.
+- O envio da prova inteira e os envios, substituições e remoções por questão estão integrados. O portal também mostra notas e comentários validados por questão antes da liberação final. Prazo geral e exceção individual são aplicados também na confirmação e na remoção de arquivos. A publicação bloqueia novos envios mesmo quando há uma exceção.
 
 ## Testes da revisão
 
@@ -73,3 +73,11 @@ node scripts/testar-pendencias.mjs
 O primeiro script exercita as regras puras de validação, completude, totalização e exportação CSV. `testar-pendencias.mjs` confere que linhas sem número, desconhecidas ou duplicadas são preservadas com transcrição intacta e sem nota. O teste de API e o de navegador exercitam o fluxo de revisão com dependências simuladas; não são uma verificação de serviços externos em produção.
 
 Para checagens gerais, execute `npm run lint`, `npm run typecheck` e `npm run build`.
+
+## Instalação e verificação dos prazos
+
+Antes de publicar a versão, execute `supabase/prazos.sql` no SQL Editor do mesmo projeto, após as migrações de schema e contas. O script adiciona duas colunas e a função `confirmar_envio_aluno`, executável apenas pelo servidor. O upload final confere o prazo e a versão dos arquivos na transação que invalida respostas e devolutiva anteriores. Mudanças de prazo e finalização do envio usam o mesmo bloqueio da linha da prova.
+
+Testes: `node scripts/testar-prazos.mjs` e `node --experimental-vm-modules scripts/testar-prazos-api.mjs`. Para testar a migração em PostgreSQL local com PGlite, instale `@electric-sql/pglite` num ambiente de teste e execute `node scripts/testar-prazos-sql.mjs` (ou defina `PGLITE_MODULE` para seu arquivo `dist/index.js`). Esse teste não substitui a validação no Supabase real nem mede concorrência de múltiplas conexões.
+
+Checklist no deploy: salvar prazo futuro; fechar prazo no passado; conferir bloqueio no primeiro envio/substituição/remoção; prorrogar somente um aluno; confirmar envio desse aluno e bloqueio dos demais; revogar exceção; preparar upload antes e tentar finalizar após o encerramento; confirmar nova revisão após substituir arquivo; conferir bloqueio total após publicação.

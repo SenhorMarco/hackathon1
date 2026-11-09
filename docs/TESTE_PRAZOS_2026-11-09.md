@@ -1,6 +1,6 @@
 # Teste de prazos no deploy — 09/11/2026
 
-**Status: ciclo principal aprovado no deploy; cenários adicionais pendentes.** O deploy testado contém a funcionalidade do commit `eedc958` e a correção de interface `e380e53`. A migração foi verificada: health do endpoint real confirmou campos disponíveis, função do servidor disponível e bloqueio de RPC anônima. Foram conferidos configuração pelo professor, primeiro envio bloqueado na interface para A, envio/substituição aceitos para B e recusa pelo servidor de uma substituição iniciada pela página antiga após revogar a exceção.
+**Status: aprovado no deploy, incluindo os cenários adicionais.** O deploy testado contém a funcionalidade do commit `eedc958` e a correção de interface `e380e53`. A migração foi verificada: health do endpoint real confirmou campos disponíveis, função do servidor disponível e bloqueio de RPC anônima. Foram conferidos configuração pelo professor, primeiro envio bloqueado na interface, envio/substituição com exceção, revogação, upload atravessando o prazo, isolamento entre contas e concorrência. A conclusão e a evidência automatizada estão no final deste relatório.
 
 ## Preparação
 
@@ -26,10 +26,11 @@
 - [x] Confirmar na interface do aluno que o primeiro envio para A, com prazo expirado, é bloqueado.
 - [x] Confirmar que B aceita envio e substituição de arquivo dentro da exceção individual; a lista passou a mostrar somente o arquivo substituto.
 - [x] Revogar a exceção de B e confirmar com a conta de aluno que o servidor bloqueia um envio iniciado pela página antiga ainda aberta, preservando o arquivo anterior.
-- [ ] Testar o limite exato do prazo, incluindo envio que cruza o horário de encerramento.
-- [ ] Verificar isolamento das exceções entre múltiplas contas de aluno.
+- [x] Testar o instante final nas regras locais e, no deploy, um upload autorizado antes do prazo com confirmação depois dele.
+- [x] Verificar isolamento das exceções entre múltiplas contas de aluno no deploy.
+- [x] Verificar primeiros envios concorrentes, substituições com a mesma versão anterior e edição simultânea de prazos no banco/deploy reais.
 
-Testes locais de SQL cobriram regras de prazo; não são evidência de validação da interface nem dos envios reais acima. O teste da página antiga foi recusado antes de obter autorização de upload: não comprova o cenário de um upload já autorizado que cruza o instante de encerramento antes da confirmação final. Concorrência entre múltiplas conexões também não foi exercitada no deploy. Uma tentativa de captura da página inteira falhou; este relatório não a considera evidência. Nenhum e-mail pessoal ou token foi registrado. As imagens locais em `tmp` não são versionadas; este relatório registra os resultados reproduzidos.
+Os testes locais de SQL não substituem a validação no deploy. O teste manual da página antiga foi recusado antes da autorização de upload; a automação descrita na conclusão complementa essa evidência com um upload já autorizado. Uma tentativa de captura da página inteira falhou; este relatório não a considera evidência. Nenhum e-mail pessoal ou token foi registrado. As imagens locais em `tmp` não são versionadas; este relatório registra os resultados reproduzidos.
 
 ## Testes adicionais automatizados locais — 09/11/2026
 
@@ -39,4 +40,23 @@ Os três cenários restantes foram exercitados localmente com a implementação 
 - **Handlers + PostgreSQL PGlite:** `testar-envio-prazos.mjs` executou os handlers reais, consulta de acesso do portal, assinatura/verificação dos tickets e RPC SQL. Autenticação e Storage foram simulados. Foram aprovados: ticket preparado e arquivo armazenado antes do fechamento com POST posterior recusado; B sem exceção impedido de enviar e de reutilizar ticket de A; B com acesso aberto ainda impedido de usar ticket de outra identidade; prazo vencendo durante a leitura do arquivo, depois da primeira checagem do POST; exceção revogada durante essa mesma etapa. Em todas as recusas, arquivo e correção anteriores foram preservados.
 - **PostgreSQL nativo 18.6 / três conexões:** `testar-prazos-concorrencia.mjs` confirmou sobreposição real ao observar `wait_event_type = Lock` na segunda conexão antes de liberar a primeira. Primeiro envio simultâneo não duplicou submissão; substituições da mesma versão tiveram apenas uma vencedora; revogação concorrente foi respeitada; espera por bloqueio que atravessou o prazo terminou em recusa. As recusas preservaram os dados anteriores; somente a substituição aceita invalidou a correção antiga. O servidor temporário foi encerrado ao final.
 
-**Repetição no deploy ainda pendente:** o ambiente local não contém as variáveis do Supabase. O runner `scripts/testar-prazos-deploy.mjs` foi preparado e revisado, mas interrompeu antes de qualquer chamada ou criação de fixture por falta dessa configuração. A validação sintática e o lint não equivalem à execução real. Pode ser executado aqui após configuração local ou pelo colega que já tem as variáveis; instruções em `docs/FRONTEND.md`. Por isso o cartão permanece Testando, sem afirmar aprovação desses cenários no Supabase/Vercel de produção.
+Na conclusão dessa etapa local, a repetição no deploy aguardava as variáveis do Supabase. A configuração foi fornecida depois e a execução real foi concluída conforme abaixo.
+
+## Conclusão dos testes reais no deploy — 09/11/2026
+
+Execução `TESTE_PRAZOS_FINAL_1794236064439`, das **11:54:24 às 11:55:35**, horário de Brasília (`America/Sao_Paulo`), contra `https://hackathon1-blond.vercel.app` e seu Supabase real. Resultado: **seis verificações aprovadas**, sem chamadas de IA.
+
+1. Arquivo foi autorizado e armazenado antes do encerramento. A confirmação com o mesmo ticket após o prazo recebeu HTTP 409; o caminho anterior, a resposta corrigida e o feedback foram mantidos.
+2. Duas contas de aluno na mesma turma: A recebeu exceção e conseguiu enviar; B permaneceu bloqueado. Com o prazo aberto para ambos, B também foi impedido de reutilizar o ticket de A.
+3. Dois primeiros envios HTTP simultâneos: um recebeu 201 e outro 409. Persistiu uma única submissão.
+4. Duas chamadas concorrentes à RPC real com a mesma versão anterior: uma foi aceita, outra recusada com P0001. Persistiu somente a versão vencedora. Esse caso usa diretamente a função transacional do servidor, em vez de duas substituições pela interface.
+5. Duas edições concorrentes de prazo com a mesma revisão: uma recebeu 200 e outra 409.
+6. A conta de aluno autenticada não pôde executar a RPC diretamente: permissão negada, código 42501.
+
+Foram criados um professor, dois alunos e três provas sintéticos nessa execução. As três provas foram encerradas ao final, sem exceções. Uma tentativa anterior criou outra turma sintética com uma prova também encerrada; os registros identificados foram mantidos para auditoria. As provas existentes não foram alteradas por essa automação.
+
+Antes da execução aprovada, foram corrigidos dois problemas do próprio roteiro: senha sintética acima do limite aceito pelo Auth e resposta de teste sem os dados de legibilidade/barema exigidos pelo banco. O roteiro passou a gerar senha compatível, preparar uma correção legível com barema manual e informar a etapa/código de erro sem expor credenciais. Esses ajustes não alteraram o comportamento do aplicativo nem desativaram validações.
+
+Evidência versionada sem credenciais, identificadores de contas ou caminhos de arquivos: [prazos-deploy-2026-11-09.json](evidencias/prazos-deploy-2026-11-09.json). Relatório completo local: `tmp/TESTE_PRAZOS_FINAL_1794236064439/resultado.json`. As variáveis de ambiente permanecem fora do Git.
+
+O instante exato em milissegundos e a espera por bloqueio atravessando o prazo foram verificados localmente; no deploy, a confirmação ocorreu após o encerramento com uma margem de 1,5 segundo. Com os testes manuais, locais e automatizados reais acima, a tarefa de prazos e exceção individual pode ser concluída no kanban.

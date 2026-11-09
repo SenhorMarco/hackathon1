@@ -35,13 +35,18 @@ const ok = async (name, details = {}) => {
   report.checks.push({ name, ...details }); await save(); console.log(`OK: ${name}`);
 };
 const checked = (result, operation) => {
-  if (result.error) throw Error(`${operation}: ${result.error.code || 'falha'}`);
+  if (result.error) {
+    const code = /^[a-z0-9_-]+$/i.test(result.error.code || '') ? result.error.code : 'falha';
+    const error = Error(`${operation}: ${code}`);
+    error.name = 'TestOperationError';
+    throw error;
+  }
   return result.data;
 };
 const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a8mQAAAAASUVORK5CYII=', 'base64');
 async function user(role, suffix) {
   const email = `qa-prazos-${randomUUID()}@example.com`;
-  const password = `${randomUUID()}-${randomUUID()}!aA9`;
+  const password = `${randomUUID()}!aA9`;
   const data = checked(await admin.auth.admin.createUser({ email, password, email_confirm: true,
     user_metadata: { nome: `${label} ${suffix}`, papel: role } }), 'Criar conta sintética');
   report.users.push({ id: data.user.id, role, suffix }); await save();
@@ -103,8 +108,12 @@ try {
   assert.equal((await confirm(a, boundary, await prepare(a, boundary, 'original.png'))).status, 201);
   const original = (await submissions(boundary))[0];
   // As correções sintéticas servem para provar que uma recusa não as invalida.
+  checked(await admin.from('provas').update({ barema: { questoes: [{ numero: 1, valorTotal: 2,
+    criterios: [{ id: 'q1', descricao: 'Critério sintético', pontos: 2 }] }] } }).eq('id', boundary), 'Preparar barema sintético');
+  const correction = { numero: 1, legivel: true, transcricao: 'Resposta sintética', descricaoMetodo: 'Sem IA',
+    passos: [], primeiroErro: null, criteriosAtendidos: ['q1'], notaSugerida: 1, justificativa: 'Fixture manual de prazo' };
   checked(await admin.from('respostas').insert({ submissao_id: original.id, prova_id: boundary, numero: 1,
-    correcao: {}, nota_final: 1, comentario_final: 'Correção sintética preservada' }), 'Preparar correção sintética');
+    correcao: correction, nota_final: 1, comentario_final: 'Correção sintética preservada' }), 'Preparar correção sintética');
   checked(await admin.from('feedbacks').insert({ submissao_id: original.id, conteudo: {}, publicado: false }), 'Preparar feedback sintético');
   const deadline = Date.now() + 30000;
   await config(teacher, boundary, new Date(deadline).toISOString());
@@ -174,7 +183,8 @@ try {
 } catch (error) {
   report.status = 'falhou';
   // Mensagens de asserção são próprias do teste; respostas, tokens e chaves não são impressos.
-  report.error = error instanceof assert.AssertionError ? error.message.split('\n')[0] : 'Operação falhou; confira configuração/conectividade e a última etapa registrada.';
+  report.error = error instanceof assert.AssertionError || error?.name === 'TestOperationError'
+    ? error.message.split('\n')[0] : 'Operação falhou; confira configuração/conectividade e a última etapa registrada.';
   console.error(report.error); process.exitCode = 1;
 } finally {
   // Fecha somente as provas geradas por esta execução, mesmo após falha.

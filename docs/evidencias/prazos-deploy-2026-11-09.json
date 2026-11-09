@@ -1,0 +1,34 @@
+{
+  "label": "TESTE_PRAZOS_FINAL_1794236064439",
+  "base": "https://hackathon1-blond.vercel.app",
+  "startedAt": "2026-11-09T14:54:24.440Z",
+  "completedAt": "2026-11-09T14:55:35.845Z",
+  "status": "aprovado",
+  "checks": [
+    {
+      "name": "Upload autorizado antes do prazo e confirmado depois: HTTP 409, arquivo/correção/feedback preservados"
+    },
+    {
+      "name": "Duas contas na mesma turma: exceção só autoriza A; B não reutiliza o ticket de A"
+    },
+    {
+      "name": "Dois primeiros envios HTTP concorrentes: um 201, outro 409, uma única submissão"
+    },
+    {
+      "name": "Substituições RPC concorrentes com a mesma versão anterior: uma aceita e outra rejeitada, sem sobrescrita"
+    },
+    {
+      "name": "Duas edições concorrentes de prazo: revisão desatualizada recebe 409"
+    },
+    {
+      "name": "RPC direta negada à conta de aluno autenticada"
+    }
+  ],
+  "aiCalls": 0,
+  "fixturesClosed": true,
+  "fixtureCounts": {
+    "users": 3,
+    "exams": 3,
+    "files": 8
+  }
+}

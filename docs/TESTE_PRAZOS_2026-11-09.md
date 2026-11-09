@@ -1,6 +1,6 @@
 # Teste de prazos no deploy — 09/11/2026
 
-**Status: em andamento.** O deploy testado contém a funcionalidade do commit `eedc958`. A migração foi verificada: health do endpoint real confirmou campos disponíveis, função do servidor disponível e bloqueio de RPC anônima. A configuração do professor e o primeiro envio bloqueado para A, mais envio/substituição aceitos para B, foram conferidos na sessão de aluno. Revogação e bloqueio de solicitação iniciada por página antiga seguem pendentes.
+**Status: ciclo principal aprovado no deploy; cenários adicionais pendentes.** O deploy testado contém a funcionalidade do commit `eedc958` e a correção de interface `e380e53`. A migração foi verificada: health do endpoint real confirmou campos disponíveis, função do servidor disponível e bloqueio de RPC anônima. Foram conferidos configuração pelo professor, primeiro envio bloqueado na interface para A, envio/substituição aceitos para B e recusa pelo servidor de uma substituição iniciada pela página antiga após revogar a exceção.
 
 ## Preparação
 
@@ -16,14 +16,17 @@
 - Depois de recarregar e alternar entre B e A, a interface mostrou um único painel por prova, o prazo correspondente à prova A e zero exceções. A evidência local da exceção salva está em `tmp/deploy-prazos-2026-11-09/02-excecao-salva.jpg`.
 - Na conta do aluno, A apareceu em Encerradas sem envio com prazo de 08/11 às 12h. Ao abrir a prova, o portal informou “Esta prova não está mais recebendo envios” e não ofereceu upload. Evidência: `tmp/deploy-prazos-2026-11-09/03-primeiro-envio-bloqueado.jpg`. Isso confirma o bloqueio na interface para o primeiro envio; a tentativa direta contra o servidor ainda não foi feita.
 - B apareceu em Para enviar com prazo efetivo até 10/11 às 18h. O aluno enviou `resposta-q1.png` com sucesso (“Arquivo enviado”) e depois substituiu por `resposta-q2.png` (“Foto substituída”). Após a substituição, o portal passou a listar apenas a imagem da Q2. O caminho de upload/RPC real aceitou ambas as ações. Evidência: `tmp/deploy-prazos-2026-11-09/04-envio-e-substituicao-permitidos.jpg`.
-- A prova B continua em rascunho, sem análise por IA, portanto esses envios testam recebimento e substituição de arquivo, não correção. Uma aba antiga ainda mostrava Q1 selecionada e o botão Substituir; a ação não foi acionada nessa aba.
+- A prova B continua em rascunho, sem análise por IA, portanto esses envios testam recebimento e substituição de arquivo, não correção.
+- **Revogação:** com a primeira aba do aluno preservada sem recarregar, o professor removeu a exceção de B na segunda aba e salvou. A interface confirmou “Prazos salvos.”, mantendo o prazo geral vencido e sem prazo individual. Evidência: `tmp/deploy-prazos-2026-11-09/05-excecao-revogada.jpg`.
+- Após retornar à conta de aluno na segunda aba, a primeira ainda mostrava o prazo individual antigo, `resposta-q1.png` selecionada e o botão Substituir. Ao acioná-lo, a solicitação real foi recusada no preparo do envio com “Esta prova não está recebendo envios.” Evidência: `tmp/deploy-prazos-2026-11-09/06-servidor-bloqueou-pagina-antiga.jpg`. A página antiga não contornou a regra do servidor.
+- Ao recarregar a primeira aba, o prazo efetivo passou a 08/11 às 12h, apareceu “Esta prova não está mais recebendo envios.” e os controles de upload desapareceram. O arquivo persistido continuou sendo `resposta-q2.png`. A prova anterior publicada continuou aparecendo com devolutiva 10/10 no portal.
 
 ## Próximas verificações
 
 - [x] Confirmar na interface do aluno que o primeiro envio para A, com prazo expirado, é bloqueado.
 - [x] Confirmar que B aceita envio e substituição de arquivo dentro da exceção individual; a lista passou a mostrar somente o arquivo substituto.
-- [ ] Retornar à sessão do professor, revogar a exceção de B e confirmar com a conta de aluno que o servidor bloqueia um envio iniciado pela página antiga ainda aberta.
+- [x] Revogar a exceção de B e confirmar com a conta de aluno que o servidor bloqueia um envio iniciado pela página antiga ainda aberta, preservando o arquivo anterior.
 - [ ] Testar o limite exato do prazo, incluindo envio que cruza o horário de encerramento.
 - [ ] Verificar isolamento das exceções entre múltiplas contas de aluno.
 
-Testes locais de SQL cobriram regras de prazo; não são evidência de validação da interface nem dos envios reais acima. Uma tentativa de captura da página inteira falhou; este relatório não a considera evidência. Nenhum e-mail pessoal ou token foi registrado. O relatório não declara todos os casos aprovados enquanto os testes do portal do aluno estiverem pendentes.
+Testes locais de SQL cobriram regras de prazo; não são evidência de validação da interface nem dos envios reais acima. O teste da página antiga foi recusado antes de obter autorização de upload: não comprova o cenário de um upload já autorizado que cruza o instante de encerramento antes da confirmação final. Concorrência entre múltiplas conexões também não foi exercitada no deploy. Uma tentativa de captura da página inteira falhou; este relatório não a considera evidência. Nenhum e-mail pessoal ou token foi registrado. As imagens locais em `tmp` não são versionadas; este relatório registra os resultados reproduzidos.

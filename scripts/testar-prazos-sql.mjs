@@ -8,6 +8,7 @@ const prova = '10000000-0000-4000-8000-000000000001';
 const aluno = '10000000-0000-4000-8000-000000000002';
 const outro = '10000000-0000-4000-8000-000000000003';
 const envio = '10000000-0000-4000-8000-000000000004';
+const colega = '10000000-0000-4000-8000-000000000005';
 try {
   await db.exec(`create role anon; create role authenticated; create role service_role;
     create table provas(id uuid primary key,turma_id uuid,status text);
@@ -19,7 +20,7 @@ try {
   await db.exec(migration);
   await db.exec(migration);
   await db.query('insert into provas(id,turma_id,status) values($1,$1,$2)',[prova,'corrigindo']);
-  await db.query('insert into alunos values($1,$2),($3,$3)',[aluno,prova,outro]);
+  await db.query('insert into alunos values($1,$2),($3,$3),($4,$2)',[aluno,prova,outro,colega]);
   const call = (previous, paths=['nova.png'], student=aluno, remove=false) => db.query(
     'select confirmar_envio_aluno($1,$2,$3,$4,$5,$6,$7,$8) as envio',
     [prova,student,envio,previous,paths,paths,'Aluno sintético',remove]);
@@ -31,8 +32,20 @@ try {
   await db.exec("update provas set prazo_envio = clock_timestamp() - interval '1 second'");
   await assert.rejects(call(['original.png']),/Prazo encerrado/i);
   assert.equal((await db.query('select arquivo_paths from submissoes')).rows[0].arquivo_paths[0],'original.png');
+  assert.equal((await db.query('select count(*)::int n from respostas')).rows[0].n,1);
+  assert.equal((await db.query('select count(*)::int n from feedbacks')).rows[0].n,1);
+  assert.equal((await db.query('select status from submissoes')).rows[0].status,'enviada');
+  // The transaction starts while the deadline is open, then submits after it expires.
+  // clock_timestamp() must see wall-clock time, unlike transaction-stable now().
+  await db.exec("begin; update provas set prazo_envio=clock_timestamp()+interval '100 milliseconds'; select pg_sleep(0.15)");
+  await assert.rejects(call(['original.png']),/Prazo encerrado/i);
+  await db.exec('rollback');
+  assert.equal((await db.query('select arquivo_paths from submissoes')).rows[0].arquivo_paths[0],'original.png');
+  assert.equal((await db.query('select count(*)::int n from respostas')).rows[0].n,1);
+  assert.equal((await db.query('select count(*)::int n from feedbacks')).rows[0].n,1);
   await db.query("update provas set excecoes_envio = jsonb_build_object($1::text,(clock_timestamp()+interval '1 day')::text)",[aluno]);
   await assert.rejects(call(['original.png'],['outra.png'],outro),/não autorizado/i);
+  await assert.rejects(call(null,['colega.png'],colega),/Prazo encerrado/i);
   await call(['original.png']);
   assert.equal((await db.query('select count(*)::int n from respostas')).rows[0].n,0);
   assert.equal((await db.query('select count(*)::int n from feedbacks')).rows[0].n,0);

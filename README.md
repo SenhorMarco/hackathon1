@@ -72,7 +72,7 @@ Na revisão, cada resposta tem sua própria nota e feedback. Respostas ausentes,
 - `src/components/`: telas do professor (`workspace`, `correction-review`), envios e portal do aluno.
 - `src/lib/ai/`: cliente da IA, prompts (análise, barema, correção, agrupamento, devolutiva) e validações.
 - `src/lib/aluno/`, `src/lib/db/`, `src/lib/uploads/`: regras de acesso, banco e arquivos.
-- `supabase/`: `schema.sql` e `contas.sql`.
+- `supabase/`: esquema, contas, prazos e publicação transacional.
 - `scripts/`: testes de integração e utilitários.
 - `docs/`: regras de negócio, plano de negócios, contas, decisões e validações.
 - `prompts/`: transcrições das conversas com IA usadas pela equipe.
@@ -87,7 +87,9 @@ cp .env.example .env.local   # preencha as variáveis
 npm run dev
 ```
 
-No SQL Editor do Supabase, rode `supabase/schema.sql`, depois `supabase/contas.sql` e `supabase/prazos.sql`. Detalhes de autenticação em [docs/CONTAS.md](docs/CONTAS.md). Nunca faça commit do `.env.local` nem coloque a chave `service_role` em variáveis `NEXT_PUBLIC_*`.
+No SQL Editor do Supabase, rode `supabase/schema.sql`, depois `supabase/contas.sql`, `supabase/prazos.sql` e `supabase/publicacao.sql`. Detalhes de autenticação em [docs/CONTAS.md](docs/CONTAS.md). Nunca faça commit do `.env.local` nem coloque a chave `service_role` em variáveis `NEXT_PUBLIC_*`.
+
+A publicação transacional precisa de `supabase/publicacao.sql` e da API correspondente. A migração preserva os dados e pode ser reaplicada. Em um projeto existente, aplique o arquivo e publique essa versão da API em seguida: durante a troca, a versão antiga deixa de liberar provas. A API nova retorna 503 se a função ainda não existir, sem recorrer a gravações separadas. [Procedimento e testes](docs/TESTE_PUBLICACAO_2026-11-10.md).
 
 Verificações:
 
@@ -106,7 +108,7 @@ npx tsx scripts/testar-supabase.mts
 - Testado principalmente com provas de matemática digitadas e fotos nítidas; letra de mão pouco legível exige conferência do professor.
 - A análise de uma prova longa pode levar alguns minutos.
 - Prazos e exceções individuais exigem a migração `supabase/prazos.sql` antes de publicar esta versão. O professor os configura na aba Respostas. Sem prazo, os envios seguem o estado da prova; a publicação sempre encerra os envios.
-- Mudanças de barema ainda não invalidam automaticamente sugestões existentes (RN17); alterações após liberação ainda não atualizam a devolutiva nem avisam o aluno (RN19).
+- Mudanças de barema ainda não invalidam automaticamente sugestões existentes (RN17). Após a publicação, a revisão fica bloqueada no banco; reabertura, atualização da devolutiva e aviso ao aluno continuam pendentes (RN19).
 - Histórico do aluno ao longo do ano e plano de estudo adaptativo estão no roadmap.
 
 ## Documentos

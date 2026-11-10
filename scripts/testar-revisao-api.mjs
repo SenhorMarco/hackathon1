@@ -21,6 +21,8 @@ await revisionModule.link(specifier => {
 await revisionModule.evaluate();
 const revisionHelpers = revisionModule.namespace;
 import { createHash } from 'node:crypto';
+const releaseSnapshotSource = compile('src/lib/release-snapshot.ts');
+const { releaseSnapshot } = await import(`data:text/javascript;base64,${Buffer.from(releaseSnapshotSource).toString('base64')}`);
 const examId = '10000000-0000-4000-8000-000000000001';
 const answerId = '10000000-0000-4000-8000-000000000002';
 const submissionId = '10000000-0000-4000-8000-000000000003';
@@ -29,12 +31,20 @@ let tables;
 let generatedFeedbackInvalid = false;
 let generatedFeedbackInput;
 let raceAssociation = false;
+let rpcFailureCode = null;
+let rpcConcurrentMutation = null;
+let feedbackSequence = 1;
+let actionLog = [];
+const fakeFeedbackId = () => `20000000-0000-4000-8000-${String(feedbackSequence++).padStart(12, '0')}`;
 function reset() {
+  actionLog = [];
+  rpcFailureCode = null;
+  rpcConcurrentMutation = null;
   tables = {
     provas: [{ id: examId, status: 'corrigindo', analise: { questoes: [] }, barema: { questoes: [{ numero: 1, valorTotal: 2 }, { numero: 2, valorTotal: 3 }] } }],
     submissoes: [{ id: submissionId, prova_id: examId, aluno_id: 'student', arquivo_paths: ['file-1'], status: 'corrigida' }],
     respostas: [1, 2].map((numero, i) => ({ id: i ? 'second-answer' : answerId, prova_id: examId, submissao_id: submissionId, numero, nota_final: 1, comentario_final: 'Comentário revisado', correcao: { legivel: true } })),
-    feedbacks: [{ submissao_id: submissionId, token: 'abc', publicado: false }],
+    feedbacks: [{ id: fakeFeedbackId(), submissao_id: submissionId, token: 'abc', publicado: false }],
   };
 }
 function approvedContent(submission, answers) {
@@ -58,9 +68,9 @@ function db() {
       is(key, value) { filters.push(row => row[key] === value); return query; },
       in(key, values) { filters.push(row => values.includes(row[key])); return query; },
       order() { return query; }, single() { single = true; return query; }, maybeSingle() { single = true; return query; },
-      update(data) { action = 'update'; values = data; return query; }, delete() { action = 'delete'; return query; },
-      upsert(data) { action = 'upsert'; values = data; return query; },
-      insert(data) { action = 'insert'; values = data; return query; },
+      update(data) { action = 'update'; values = data; actionLog.push({ table, action, values }); return query; }, delete() { action = 'delete'; actionLog.push({ table, action }); return query; },
+      upsert(data) { action = 'upsert'; values = data; actionLog.push({ table, action, values }); return query; },
+      insert(data) { action = 'insert'; values = data; actionLog.push({ table, action, values }); return query; },
       then(resolve, reject) {
         try {
           let error = null;
@@ -72,7 +82,7 @@ function db() {
           let rows = tables[table].filter(row => filters.every(filter => filter(row)));
           if (action === 'delete') tables[table] = tables[table].filter(row => !rows.includes(row));
           if (action === 'update') rows.forEach(row => Object.assign(row, values));
-          if (action === 'upsert') { const row = tables[table].find(r => r.submissao_id === values.submissao_id); if (row) Object.assign(row, values); else tables[table].push(values); rows = [row ?? values]; }
+          if (action === 'upsert') { const row = tables[table].find(r => r.submissao_id === values.submissao_id); if (row) Object.assign(row, values); else { values.id ??= fakeFeedbackId(); tables[table].push(values); } rows = [row ?? values]; }
           if (action === 'insert') {
             const inserts = Array.isArray(values) ? values : [values];
             const conflict = inserts.some(insert => tables[table].some(row => row.prova_id === insert.prova_id && row.submissao_id === insert.submissao_id && row.numero === insert.numero));
@@ -84,17 +94,30 @@ function db() {
       },
     };
     return query;
+  }, rpc(name, args) {
+    actionLog.push({ table: 'rpc', action: 'rpc', name, args: structuredClone(args) });
+    if (rpcFailureCode) return Promise.resolve({ data: null, error: { code: rpcFailureCode } });
+    if (rpcConcurrentMutation) { rpcConcurrentMutation(); rpcConcurrentMutation = null; }
+    const liveSnapshot = releaseSnapshot(tables.provas[0], tables.submissoes, tables.respostas, tables.feedbacks);
+    if (!sameJson(liveSnapshot, args.p_snapshot)) return Promise.resolve({ data: null, error: { code: '40001' } });
+    tables.feedbacks.forEach(row => { if (args.p_snapshot.feedbacks.some(snapshot => snapshot.id === row.id)) row.publicado = true; });
+    tables.provas[0].status = 'corrigida';
+    return Promise.resolve({ data: { liberadas: args.p_snapshot.submissoes.length }, error: null });
   } };
 }
 const mocks = {
   '@/lib/auth/server': { professorRoute: handler => handler, account: async () => ({ id: teacherUUID, nome: 'Professor sintético', papel: 'professor' }) },
   zod: { z }, '@/lib/ai/schemas': { FeedbackAluno: feedbackSchema }, '@/lib/review': helpers,
   '@/lib/db/server': { db },
-  '@/lib/db/api': { apiError: (error, status) => Response.json({ error }, { status }), findProva: async () => tables.provas[0], privateHeaders: {}, serverError: error => { throw error; }, uuid: z.string().uuid() },
+  '@/lib/db/api': { apiError: (error, status) => Response.json({ error }, { status }), findProva: async () => tables.provas[0], privateHeaders: {}, serverError: error => {
+    if (['40001', '40P01', '55000'].includes(error?.code)) return Response.json({ error: 'A prova mudou; recarregue a revisão.' }, { status: 409 });
+    throw error;
+  }, uuid: z.string().uuid() },
   '@/lib/db/submissions': { findSubmission: async (exam, id) => tables.submissoes.find(row => row.prova_id === exam && row.id === id) ?? null },
   '@/lib/ai/client': { ia: () => ({ withOptions: () => ({}) }), MODELO: 'mock' },
   '@/lib/ai/erros': { logFalhaIA() {}, motivoFalhaIA: () => 'falha' },
   '@/lib/review-revision': revisionHelpers,
+  '@/lib/release-snapshot': { releaseSnapshot },
   '@/lib/ai/feedback': { gerarFeedback: async input => { generatedFeedbackInput = input; return generatedFeedbackInvalid ? { resumo: 'Incompleta', questoes: [], proximosPassos: [] } : ({ resumo: 'Devolutiva de teste', questoes: [1, 2].map(numero => ({ numero, acertos: 'Bom trabalho', erro: '', porque: '', dica: 'Continue praticando', exercicios: [] })), proximosPassos: ['Revise os conceitos'] }); } },
 };
 async function route(path) {
@@ -145,10 +168,40 @@ assert.match(generated.feedback.revisao, /^[a-f0-9]{64}$/);
 assert.equal((await putFeedback(putJson({ conteudo: { ...generated.feedback.conteudo, questoes: [] }, revisao: generated.feedback.revisao }), context)).status, 400, 'rejeita aprovação com questões faltantes');
 assert.equal((await putFeedback(putJson({ conteudo: generated.feedback.conteudo, revisao: generated.feedback.revisao }), context)).status, 200);
 assert.equal((await (await getFeedback(null, context)).json()).feedback.revisado, true);
+const firstPublishAction = actionLog.length;
 assert.equal((await release(null, context)).status, 200);
+const publishActions = actionLog.slice(firstPublishAction);
+const publishCall = publishActions.find(action => action.action === 'rpc' && action.name === 'publicar_prova');
+assert.ok(publishCall, 'liberação chama a RPC atômica publicar_prova');
+assert.equal(publishCall.args.p_prova, examId);
+assert.equal(publishCall.args.p_professor, teacherUUID);
+assert.ok(sameJson(publishCall.args.p_snapshot, releaseSnapshot(tables.provas[0], tables.submissoes, tables.respostas, tables.feedbacks)), 'envia snapshot completo da prova, submissão, respostas e devolutivas');
+assert.ok(!publishActions.some(action => action.action === 'update' && ['feedbacks', 'provas'].includes(action.table)), 'handler não publica com updates diretos');
 assert.equal((await release(null, context)).status, 200, 'liberação repetida é idempotente');
 assert.equal(tables.feedbacks[0].publicado, true);
 assert.equal((await save(patch({ nota: 1, comentario: 'Mudança' }), context)).status, 409, 'revisão após divulgação continua bloqueada até existir versionamento');
+
+reset();
+tables.feedbacks[0].conteudo = approvedContent(tables.submissoes[0], tables.respostas);
+rpcConcurrentMutation = () => { tables.respostas[0].correcao = { ...tables.respostas[0].correcao, notaSugerida: 99 }; };
+const racedPublication = await release(null, context);
+assert.equal(racedPublication.status, 409, 'mudança entre leitura da API e RPC recebe conflito de snapshot');
+assert.equal(tables.provas[0].status, 'corrigindo', 'conflito não muda status');
+assert.ok(tables.feedbacks.every(row => !row.publicado), 'conflito não publica devolutivas');
+assert.ok(!actionLog.some(action => action.action === 'update' && ['feedbacks', 'provas'].includes(action.table)), 'conflito não usa updates diretos');
+
+reset();
+tables.feedbacks[0].conteudo = approvedContent(tables.submissoes[0], tables.respostas);
+rpcFailureCode = 'PGRST202';
+const unavailablePublication = await release(null, context);
+assert.equal(unavailablePublication.status, 503, 'RPC ausente indica atualização do banco necessária');
+assert.equal(tables.provas[0].status, 'corrigindo'); assert.ok(tables.feedbacks.every(row => !row.publicado));
+
+reset();
+tables.feedbacks[0].conteudo = approvedContent(tables.submissoes[0], tables.respostas);
+rpcFailureCode = 'P0002';
+assert.equal((await release(null, context)).status, 404, 'RPC reporta prova inexistente como 404');
+assert.equal(tables.provas[0].status, 'corrigindo'); assert.ok(tables.feedbacks.every(row => !row.publicado));
 reset();
 generatedFeedbackInvalid = true;
 assert.equal((await feedback(post(), context)).status, 502, 'rejeita conteúdo gerado sem todas as questões');
@@ -189,10 +242,10 @@ tables.submissoes.push({ id: secondSubmission, prova_id: examId, aluno_id: 'stud
 tables.respostas.push(...[1, 2].map(numero => ({ id: `second-${numero}`, prova_id: examId, submissao_id: secondSubmission, numero, nota_final: 1, comentario_final: 'Comentário revisado', correcao: { legivel: true } })));
 tables.feedbacks = [];
 assert.equal((await release(null, context)).status, 409, 'não libera enquanto falta devolutiva para uma submissão');
-tables.feedbacks.push({ submissao_id: submissionId, token: 'abc', publicado: false, conteudo: approvedContent(tables.submissoes[0], tables.respostas) });
+tables.feedbacks.push({ id: fakeFeedbackId(), submissao_id: submissionId, token: 'abc', publicado: false, conteudo: approvedContent(tables.submissoes[0], tables.respostas) });
 assert.equal((await release(null, context)).status, 409, 'não libera com aprovação faltante do segundo aluno');
 assert.ok(tables.feedbacks.every(row => !row.publicado), 'não publica devolutivas parcialmente');
-tables.feedbacks.push({ submissao_id: secondSubmission, token: 'def', publicado: false, conteudo: approvedContent(tables.submissoes[1], tables.respostas) });
+tables.feedbacks.push({ id: fakeFeedbackId(), submissao_id: secondSubmission, token: 'def', publicado: false, conteudo: approvedContent(tables.submissoes[1], tables.respostas) });
 assert.equal((await release(null, context)).status, 200, 'libera quando cada submissão está completa e tem devolutiva');
 assert.ok(tables.feedbacks.every(row => row.publicado));
 reset();
@@ -268,7 +321,7 @@ const duplicateDecision = (revisao, extra = {}) => readDecision('desconsiderar',
 reset();
 const pending = makePending();
 tables.respostas.push(pending);
-tables.feedbacks = [{ submissao_id: submissionId, token: 'abc', publicado: false }];
+tables.feedbacks = [{ id: fakeFeedbackId(), submissao_id: submissionId, token: 'abc', publicado: false }];
 assert.ok(helpers.reviewIssues(tables.provas[0].barema, tables.submissoes, tables.respostas).length, 'pendência negativa ainda bloqueia revisão antes de decisão');
 const pendingRevision = revisionHelpers.readingRevision(pending);
 assert.equal((await reading(duplicateDecision(pendingRevision, { arquivoConferido: undefined }), pendingContext)).status, 400, 'exige confirmação explícita do arquivo');
@@ -300,7 +353,7 @@ assert.equal(helpers.isResolvedReading(resolved), true);
 assert.deepEqual(helpers.reviewIssues(tables.provas[0].barema, tables.submissoes, tables.respostas), [], 'ignora somente a leitura negativa resolvida');
 assert.equal((await reading(duplicateDecision(pendingRevision), pendingContext)).status, 200, 'repetição do mesmo pedido é idempotente');
 assert.equal(resolved.correcao.historicoLeitura.length, 1, 'repetição não duplica histórico');
-tables.feedbacks = [{ submissao_id: submissionId, token: 'novo-texto', publicado: false }];
+tables.feedbacks = [{ id: fakeFeedbackId(), submissao_id: submissionId, token: 'novo-texto', publicado: false }];
 assert.equal((await reading(duplicateDecision(pendingRevision), pendingContext)).status, 200);
 assert.equal(tables.feedbacks.length, 1, 'retentativa não apaga texto preparado depois da decisão');
 const resolveSnapshot = revisionHelpers.readingRevision(resolved);

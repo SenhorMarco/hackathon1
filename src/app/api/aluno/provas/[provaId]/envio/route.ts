@@ -28,7 +28,7 @@ function questoesDaProva(prova: { analise?: { questoes?: { numero: number }[] } 
 async function confirmar(provaId: string, alunoId: string, id: string, anteriores: string[] | null, arquivos: {path:string;nome:string}[], nome: string, remover = false) {
   const {data,error} = await db().rpc('confirmar_envio_aluno', {p_prova:provaId,p_aluno:alunoId,p_envio:id,p_anteriores:anteriores,p_paths:arquivos.map(a=>a.path),p_nomes:arquivos.map(a=>a.nome),p_nome:nome,p_remover:remover});
   if(error) {
-    if(error.code==='P0001') return {response:erro('O prazo encerrou, a autorização mudou ou o envio foi atualizado. Recarregue a página.',409)};
+    if(['P0001','40001','40P01','55000'].includes(error.code)) return {response:erro('O prazo encerrou, a autorização mudou ou o envio foi atualizado. Recarregue a página.',409)};
     throw error;
   }
   const removidos = (anteriores || []).filter(p=>!arquivos.some(a=>a.path===p));

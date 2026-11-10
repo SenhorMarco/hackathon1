@@ -12,7 +12,7 @@ export async function withExamResults(provas: Prova[]): Promise<ProvaComResultad
   if (!submissions.length) return provas.map(p => ({ ...p, respostasValidadas: {} }));
   const studentIds = [...new Set(submissions.map(s => s.aluno_id).filter(Boolean))];
   const [answers, students] = await Promise.all([
-    db().from('respostas').select('submissao_id,numero,nota_final,comentario_final').in('submissao_id', submissions.map(s => s.id)),
+    db().from('respostas').select('submissao_id,numero,nota_final,comentario_final,correcao').in('submissao_id', submissions.map(s => s.id)),
     studentIds.length ? db().from('alunos').select('id,referencia_local').in('id', studentIds) : Promise.resolve({ data: [], error: null }),
   ]);
   if (answers.error || students.error) throw answers.error || students.error;

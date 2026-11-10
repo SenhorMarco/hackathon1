@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { FeedbackAluno, type Barema } from './ai/schemas';
 import type { ReviewAnswer, ReviewSubmission } from './review';
+import type { Resposta } from './db/types';
 
 function canonical(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonical);
@@ -10,6 +11,12 @@ function canonical(value: unknown): unknown {
 
 export function contentRevision(content: unknown): string {
   return createHash('sha256').update(JSON.stringify(canonical(content))).digest('hex');
+}
+
+/** Versão da linha exibida ao professor, incluindo decisões e validações. */
+export function readingRevision(answer: Pick<Resposta, 'id' | 'numero' | 'correcao' | 'nota_final' | 'comentario_final' | 'grupo_id'>): string {
+  return contentRevision({ id: answer.id, numero: answer.numero, correcao: answer.correcao,
+    nota: answer.nota_final, comentario: answer.comentario_final, grupo: answer.grupo_id });
 }
 
 /** Identifica os dados exatos usados para escrever e revisar uma devolutiva. */

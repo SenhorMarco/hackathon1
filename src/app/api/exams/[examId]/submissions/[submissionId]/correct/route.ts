@@ -27,6 +27,11 @@ async function handlePOST(_request: Request, context: { params: Promise<{ examId
     if (!prova.analise || !prova.barema) return apiError('Analise a prova e confirme o barema antes de corrigir.', 409);
     if (!submissao.aluno_id) return apiError('Confirme o aluno desta prova antes de corrigir.', 409);
     if (prova.status === 'corrigida') return apiError('As correções desta prova já foram liberadas.', 409);
+    const previous = await db().from('respostas').select('nota_final,correcao').eq('submissao_id', submissionId);
+    if (previous.error) throw previous.error;
+    if (previous.data?.some(r => r.nota_final !== null || r.correcao?.origem === 'professor' || r.correcao?.historicoLeitura?.length)) {
+      return apiError('Há revisões do professor nesta prova. Resolva as pendências na revisão para preservar as decisões já registradas.', 409);
+    }
 
     await db().from('submissoes').update({ status: 'corrigindo', erro: null }).eq('id', submissionId);
     if (prova.status !== 'corrigindo') await db().from('provas').update({ status: 'corrigindo' }).eq('id', examId);

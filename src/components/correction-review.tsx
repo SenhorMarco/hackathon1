@@ -2,9 +2,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { AnaliseProva, Barema } from '@/lib/ai/schemas';
 import type { Grupo, Resposta, Submissao } from '@/lib/db/types';
-import { csvCell, finalTotal, isValidated, reviewIssues } from '@/lib/review';
+import { csvCell, finalTotal, isResolvedReading, isValidated, reviewIssues } from '@/lib/review';
 import FeedbackEditor from './feedback-editor';
 import ManualAnswer from './manual-answer';
+import ReadingPending from './reading-pending';
 
 type Submission = Pick<Submissao, 'id' | 'aluno_id' | 'status' | 'erro' | 'nome_lido' | 'arquivo_paths' | 'arquivo_nomes'>;
 type Review = {
@@ -33,7 +34,6 @@ export default function CorrectionReview({ examId, resultsOnly = false, onReleas
   const [group, setGroup] = useState('all');
   const [pendingOnly, setPendingOnly] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, Draft>>({});
-  const [associations, setAssociations] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   const lock = useRef(false);
 
@@ -63,7 +63,8 @@ export default function CorrectionReview({ examId, resultsOnly = false, onReleas
   const issues = reviewIssues(data.barema, data.submissoes, data.respostas);
   const missingFeedback = confirmed.filter(s => !data.feedbacks.some(f => f.submissao_id === s.id && f.atualizado));
   const unreviewedFeedback = confirmed.filter(s => !data.feedbacks.some(f => f.submissao_id === s.id && f.revisado));
-  const unidentified = data.respostas.filter(answer => !questions.some(q => q.numero === answer.numero));
+  const unidentified = data.respostas.filter(answer => !isResolvedReading(answer) && !questions.some(q => q.numero === answer.numero));
+  const resolvedReadings = data.respostas.filter(isResolvedReading);
   const name = (id: string | null) => data.alunos.find(a => a.id === id)?.nome || 'Aluno sem confirmação';
   const groups = data.grupos.filter(g => g.numero === current?.numero);
   const answers = data.respostas.filter(r => r.numero === current?.numero);
@@ -131,11 +132,8 @@ export default function CorrectionReview({ examId, resultsOnly = false, onReleas
     <div className="review-summary"><span><strong>{validated}</strong> / {data.submissoes.length * questions.length} respostas validadas</span><span><strong>{totals.length}</strong> / {data.submissoes.length} provas completas</span><span className={`badge ${released ? 'green' : 'amber'}`}>{released ? 'Resultados liberados' : 'Resultados em revisão'}</span></div>
     {!data.submissoes.length && <div className="empty"><h3>Aguardando as provas dos alunos</h3><p>Use a aba Respostas para receber os arquivos e confirmar os alunos.</p></div>}
     {!resultsOnly && <>
-      {!!unidentified.length && <div className="panel submission-list"><h3>Pendências de associação · {unidentified.length}</h3><p>Confira o arquivo e indique a questão de cada resposta. Nenhuma nota será validada automaticamente.</p>{unidentified.map(answer => {
-        const submission = data.submissoes.find(s => s.id === answer.submissao_id);
-        const available = questions.filter(q => !data.respostas.some(r => r.submissao_id === answer.submissao_id && r.numero === q.numero));
-        return <article className="review-card" key={answer.id}><h4>{name(submission?.aluno_id ?? null)}</h4><p className="review-transcription">{answer.correcao.transcricao || 'Transcrição não disponível. Confira o arquivo original.'}</p>{submission?.arquivo_paths.map((_, i) => <a key={i} className="text-button" href={`${base}/submissions/${answer.submissao_id}/file?index=${i}`} target="_blank" rel="noopener noreferrer">Abrir {submission.arquivo_nomes[i] || `página ${i + 1}`}</a>)}<label>Questão desta resposta<select aria-label={`Associar resposta de ${name(submission?.aluno_id ?? null)}`} disabled={busy || released} value={associations[answer.id] ?? ''} onChange={event => setAssociations(previous => ({ ...previous, [answer.id]: event.target.value }))}><option value="">Selecione a questão</option>{available.map(q => <option key={q.numero} value={q.numero}>Q{q.numero}</option>)}</select></label><button className="button secondary" disabled={busy || released || !associations[answer.id]} onClick={() => task(async () => { const target = Number(associations[answer.id]); await api(`${base}/answers/${answer.id}/associate`, { method: 'POST', body: JSON.stringify({ numero: target }) }); setNumber(target); setGroup('all'); setNotice('Questão associada. Confira o arquivo e valide a nota e o feedback individualmente.'); })}>Associar questão</button>{!available.length && <p className="form-error">Todas as questões já têm uma resposta. Confira se há leitura duplicada antes de continuar.</p>}</article>;
-      })}</div>}
+      {!!unidentified.length && <div className="panel submission-list"><h3>Pendências de associação · {unidentified.length}</h3><p>Confira o arquivo e indique a questão de cada resposta. Leituras duplicadas ou externas à prova podem ser desconsideradas com justificativa. Nenhuma nota será validada automaticamente.</p>{unidentified.map(answer => <ReadingPending key={answer.id} examId={examId} answer={answer} submission={data.submissoes.find(s => s.id === answer.submissao_id)} studentName={name(data.submissoes.find(s => s.id === answer.submissao_id)?.aluno_id ?? null)} questions={questions} answers={data.respostas} disabled={busy || released} onSaved={message => task(async () => { setNotice(message); setGroup('all'); })} />)}</div>}
+      {!!resolvedReadings.length && <details className="panel submission-list"><summary>Leituras desconsideradas · {resolvedReadings.length}</summary><p>Os textos e arquivos foram preservados. Reabrir uma leitura torna a prova pendente novamente e exige nova revisão da devolutiva.</p>{resolvedReadings.map(answer => <ReadingPending key={answer.id} examId={examId} answer={answer} submission={data.submissoes.find(s => s.id === answer.submissao_id)} studentName={name(data.submissoes.find(s => s.id === answer.submissao_id)?.aluno_id ?? null)} questions={questions} answers={data.respostas} disabled={busy || released} onSaved={message => task(async () => setNotice(message))} />)}</details>}
       {!!data.submissoes.length && <details className="panel submission-list" open={pending.length > 0 || confirmed.length !== data.submissoes.length}>
         <summary>Pré-correção · {confirmed.length - pending.length} de {data.submissoes.length} provas analisadas</summary>
         {data.submissoes.map(s => <div key={s.id} className="submission-row"><div><strong>{name(s.aluno_id)}</strong><p>{!s.aluno_id ? 'Confirme o aluno na aba Respostas.' : s.status === 'corrigida' ? 'Sugestões disponíveis para revisão' : s.status === 'erro' ? 'A análise falhou. Tente novamente.' : 'Aguardando pré-correção'}</p>{s.erro && <p className="form-error">{s.erro}</p>}</div>{!released && s.aluno_id && s.status !== 'corrigida' && <button className="button secondary" disabled={busy} onClick={() => correct([s])}>Pré-corrigir</button>}</div>)}
@@ -161,7 +159,7 @@ export default function CorrectionReview({ examId, resultsOnly = false, onReleas
           return <article className="panel review-card" key={answer.id} aria-label={`Resposta de ${name(submission?.aluno_id ?? null)}, Q${answer.numero}`}>
             <div className="review-head"><div><h3>{name(submission?.aluno_id ?? null)}</h3><p className="muted">{approach?.rotulo ?? 'Sem grupo'} · Q{answer.numero}</p></div><span className={`badge ${approved ? 'green' : 'amber'}`}>{drafts[answer.id] ? 'Alterações não salvas' : approved ? 'Validada' : 'Pendente de revisão'}</span></div>
             <div className="submission-actions">{submission?.arquivo_paths.map((_, i) => <a key={i} className="text-button" href={`${base}/submissions/${answer.submissao_id}/file?index=${i}`} target="_blank" rel="noopener noreferrer">Abrir {submission.arquivo_nomes[i] || `página ${i + 1}`}</a>)}</div>
-            {!correction.legivel && <p className={approved ? 'muted' : 'form-error'}>{approved ? 'A IA sinalizou leitura incerta. O professor conferiu o arquivo e validou esta resposta.' : 'Leitura incerta. Confira o arquivo original; não atribua zero automaticamente.'}</p>}
+            {(!correction.legivel || correction.legibilidadeOriginal === false) && <p className={approved ? 'muted' : 'form-error'}>{approved ? 'A IA sinalizou leitura incerta. O professor conferiu o arquivo e validou esta resposta.' : 'Leitura incerta. Confira o arquivo original; não atribua zero automaticamente.'}</p>}
             {correction.metodo === 'alternativo' && <div className="alternative"><div><strong>Possível solução alternativa</strong><p>{correction.descricaoMetodo}</p>{approach?.criterio_sugerido && <p>Critério sugerido: {approach.criterio_sugerido.descricao} · {fmt(approach.criterio_sugerido.pontos)} pt. Confira a adequação ao barema antes de validar.</p>}</div></div>}
             <p className="review-transcription"><strong>{correction.origem === 'professor' ? 'Transcrição conferida pelo professor' : 'Transcrição da IA'}</strong><br />{correction.transcricao || 'Não disponível. Confira o arquivo.'}</p>
             {correction.origem !== 'professor' && <details className="review-reasoning"><summary>Análise sugerida pela IA · {fmt(correction.notaSugerida)} / {fmt(current.valorTotal)}</summary><p>{correction.descricaoMetodo}</p><ol>{correction.passos.map((step, i) => <li key={i}>{step.correto ? '✓' : '✗'} {step.descricao} — {step.comentario}</li>)}</ol><p>{correction.justificativa}</p></details>}

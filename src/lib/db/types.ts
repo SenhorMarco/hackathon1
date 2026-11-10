@@ -76,12 +76,23 @@ export interface Grupo {
   created_at: string;
 }
 
+export type ResolucaoLeitura = {
+  acao: 'desconsiderar'; tipo: 'duplicada' | 'fora_da_prova'; motivo: string;
+  professorId: string; em: string; revisaoAnterior: string; duplicadaDe?: string;
+};
+export type RegistroLeitura = ResolucaoLeitura | {
+  acao: 'reabrir'; professorId: string; em: string; revisaoAnterior: string;
+};
+
 export interface Resposta {
   id: string;
   submissao_id: string;
   prova_id: string;
   numero: number;
-  correcao: CorrecaoQuestao & { origem?: 'professor'; associacaoOriginal?: number };
+  correcao: CorrecaoQuestao & { origem?: 'professor'; associacaoOriginal?: number;
+    resolucaoLeitura?: ResolucaoLeitura; historicoLeitura?: RegistroLeitura[];
+    legibilidadeOriginal?: boolean; leituraConferidaEm?: string };
+  revisaoLeitura?: string;
   grupo_id: string | null;
   nota_final: number | null;
   comentario_final: string | null;

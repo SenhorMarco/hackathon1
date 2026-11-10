@@ -6,6 +6,7 @@ import { Barema, FeedbackAluno } from '@/lib/ai/schemas';
 import { db } from '@/lib/db/server';
 import styles from './aluno.module.css';
 import AlunoShell from '@/components/aluno-shell';
+import { isResolvedReading } from '@/lib/review';
 
 export const metadata = { title: 'Gaider | Sua devolutiva', robots: { index: false, follow: false }, referrer: 'no-referrer' };
 
@@ -36,12 +37,12 @@ async function Devolutiva({ params }: { params: Promise<{ token: string }> }) {
   const [provaResult, alunoResult, respostasResult] = await Promise.all([
     db().from('provas').select('titulo, barema, status').eq('id', submissao.prova_id).maybeSingle(),
     db().from('alunos').select('nome').eq('id', submissao.aluno_id).maybeSingle(),
-    db().from('respostas').select('numero, nota_final, comentario_final').eq('submissao_id', feedback.submissao_id).order('numero'),
+    db().from('respostas').select('numero, nota_final, comentario_final,correcao').eq('submissao_id', feedback.submissao_id).order('numero'),
   ]);
   if ([provaResult, alunoResult, respostasResult].some(result => result.error)) throw new Error('Não foi possível carregar a correção.');
   const { data: prova } = provaResult;
   const { data: aluno } = alunoResult;
-  const respostas = respostasResult.data || [];
+  const respostas = (respostasResult.data || []).filter(r => !isResolvedReading(r));
   if (!prova || !aluno || prova.status !== 'corrigida') notFound();
   const parsedFeedback = FeedbackAluno.safeParse(feedback.conteudo);
   const parsedBarema = Barema.safeParse(prova.barema);

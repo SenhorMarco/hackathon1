@@ -1,7 +1,7 @@
 import type { Prova } from './db/types';
 import type { Exam, Question } from './data';
 import type { ReviewAnswer, ReviewSubmission } from './review';
-import { reviewIssues } from './review';
+import { isResolvedReading, reviewIssues } from './review';
 export type ProvaComResultados = Prova & { respostasValidadas?: Exam['responses'] };
 
 /** O painel usa somente provas individuais completas, como o relatório de revisão. */
@@ -10,7 +10,7 @@ export function responsesFromReview(prova: Prova, submissions: ReviewSubmission[
   for (const submission of submissions) {
     const student = students.find(s => s.id === submission.aluno_id);
     if (!student || submissions.filter(s => s.aluno_id === student.id).length !== 1) continue;
-    const rows = answers.filter(r => r.submissao_id === submission.id);
+    const rows = answers.filter(r => r.submissao_id === submission.id && !isResolvedReading(r));
     if (reviewIssues(prova.barema, [submission], rows).length) continue;
     for (const row of rows) responses[`${student.referencia_local || student.id}:q${row.numero}`] = {
       file: '', score: Number(row.nota_final), feedback: row.comentario_final!, approved: true, alternative: false,

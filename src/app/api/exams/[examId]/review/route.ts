@@ -1,7 +1,7 @@
 import { professorRoute } from '@/lib/auth/server';
 import { apiError, findProva, privateHeaders, serverError, uuid } from '@/lib/db/api';
 import { db } from '@/lib/db/server';
-import { feedbackReviewed, reviewRevision } from '@/lib/review-revision';
+import { feedbackReviewed, readingRevision, reviewRevision } from '@/lib/review-revision';
 
 /** Tudo o que a tela de correção precisa: submissões, respostas, grupos, alunos e devolutivas. */
 async function handleGET(_request: Request, context: { params: Promise<{ examId: string }> }) {
@@ -22,7 +22,7 @@ async function handleGET(_request: Request, context: { params: Promise<{ examId:
     if (feedbacks.error) throw feedbacks.error;
     return Response.json({
       status: prova.status, barema: prova.barema, analise: prova.analise,
-      submissoes: submissoes.data, respostas: respostas.data, grupos: grupos.data, alunos: alunos.data,
+      submissoes: submissoes.data, respostas: respostas.data!.map(r => ({ ...r, revisaoLeitura: readingRevision(r) })), grupos: grupos.data, alunos: alunos.data,
       feedbacks: (feedbacks.data || []).map(feedback => {
         const submission = submissoes.data!.find(s => s.id === feedback.submissao_id)!;
         const revision = reviewRevision(prova, submission, respostas.data || []);

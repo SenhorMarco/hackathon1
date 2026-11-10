@@ -3,6 +3,7 @@ import { professorRoute } from '@/lib/auth/server';
 import { apiError, findProva, privateHeaders, serverError, uuid } from '@/lib/db/api';
 import { db } from '@/lib/db/server';
 import type { BaremaQuestao } from '@/lib/ai/schemas';
+import { isResolvedReading } from '@/lib/review';
 
 const Input = z.object({ numero: z.number().int().positive() });
 async function handlePOST(request: Request, context: { params: Promise<{ examId: string; answerId: string }> }) {
@@ -18,6 +19,7 @@ async function handlePOST(request: Request, context: { params: Promise<{ examId:
     const { data: answer, error } = await db().from('respostas').select('*').eq('prova_id', examId).eq('id', answerId).maybeSingle();
     if (error) throw error;
     if (!answer) return apiError('Resposta não encontrada.', 404);
+    if (isResolvedReading(answer)) return apiError('Reabra a pendência antes de associar esta leitura.', 409);
     if (answer.numero > 0) return apiError('Esta resposta já está associada. Recarregue a revisão.', 409);
     const { data: existing, error: existingError } = await db().from('respostas').select('id').eq('submissao_id', answer.submissao_id).eq('numero', parsed.data.numero).maybeSingle();
     if (existingError) throw existingError;
@@ -30,7 +32,7 @@ async function handlePOST(request: Request, context: { params: Promise<{ examId:
       correcao: { ...answer.correcao, numero: parsed.data.numero, notaSugerida: 0, criteriosAtendidos: [], legivel: false,
         justificativa: 'Questão associada manualmente. Confira o arquivo e avalie a nota e o feedback pelo barema desta questão.',
         associacaoOriginal: answer.correcao.numero },
-    }).eq('id', answerId).eq('numero', answer.numero).select('*').maybeSingle();
+    }).eq('id', answerId).eq('numero', answer.numero).eq('correcao', JSON.stringify(answer.correcao)).select('*').maybeSingle();
     if (updateError?.code === '23505') return apiError('A questão foi associada em outra revisão. Recarregue.', 409);
     if (updateError) throw updateError;
     if (!data) return apiError('A associação mudou. Recarregue antes de tentar novamente.', 409);

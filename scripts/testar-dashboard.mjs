@@ -12,9 +12,9 @@ async function loadTs(path, replacements = []) {
 }
 
 const review = await loadTs('src/lib/review.ts');
-const reviewImports = `const isValidated = ${review.isValidated.toString()};\nconst reviewIssues = ${review.reviewIssues.toString()};`;
+const reviewImports = `const isResolvedReading = ${review.isResolvedReading.toString()};\nconst isValidated = ${review.isValidated.toString()};\nconst reviewIssues = ${review.reviewIssues.toString()};`;
 const { responsesFromReview, examFromProva } = await loadTs('src/lib/exams.ts', [
-  ["import { reviewIssues } from './review';", reviewImports],
+  ["import { isResolvedReading, reviewIssues } from './review';", reviewImports],
 ]);
 const { validatedMean } = await loadTs('src/lib/data.ts');
 const analysis = { questoes: [1, 3].map(numero => ({
@@ -38,6 +38,20 @@ const answer = (numero, nota_final, comentario_final = 'Resposta revisada.') => 
 const complete = [answer(1, 2), answer(3, 4)];
 
 const responses = responsesFromReview(prova, [submission], complete, students);
+const archivedReading = { ...answer(-1, null, null), correcao: { resolucaoLeitura: {
+  acao: 'desconsiderar', tipo: 'duplicada', motivo: 'Mesma resposta lida duas vezes',
+  professorId: '20000000-0000-4000-8000-000000000001', em: '2026-11-10T12:00:00Z',
+  revisaoAnterior: 'a'.repeat(64), duplicadaDe: '20000000-0000-4000-8000-000000000002',
+} } };
+assert.deepEqual(responsesFromReview(prova, [submission], [...complete, archivedReading], students), responses,
+  'leitura desconsiderada não cria nota nem altera o painel');
+assert.deepEqual(responsesFromReview(prova, [submission], [...complete, { ...archivedReading, correcao: {} }], students), {},
+  'leitura ainda pendente continua bloqueando total e média');
+assert.equal(review.isResolvedReading({ ...archivedReading, numero: 1 }), false, 'uma resposta associada nunca pode ser ocultada pelo marcador');
+for (const invalid of [{ professorId: 'sem autor' }, { motivo: '' }, { tipo: 'ilegivel' }, { em: 'data inválida' }, { duplicadaDe: undefined }]) {
+  assert.equal(review.isResolvedReading({ ...archivedReading, correcao: { resolucaoLeitura: { ...archivedReading.correcao.resolucaoLeitura, ...invalid } } }), false,
+    'registro incompleto não dispensa revisão humana');
+}
 assert.equal(responses['turma-a1:q1'].score, 2);
 assert.equal(responses['turma-a1:q3'].score, 4, 'usa o número real da questão, não sua posição no array');
 assert.equal(responses['turma-a1:q1'].feedback, 'Resposta revisada.');

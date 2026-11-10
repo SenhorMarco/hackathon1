@@ -4,8 +4,11 @@ import { apiError, findProva, privateHeaders, serverError, uuid } from '@/lib/db
 import { db } from '@/lib/db/server';
 import { findSubmission } from '@/lib/db/submissions';
 import type { BaremaQuestao } from '@/lib/ai/schemas';
+import { isResolvedReading } from '@/lib/review';
 
-const Input = z.object({ numero: z.number().int().positive(), transcricao: z.string().trim().min(1).max(20000), arquivoConferido: z.literal(true) });
+const Input = z.object({ numero: z.number().int().positive(), transcricao: z.string().trim().max(20000),
+  situacao: z.enum(['transcrita', 'em_branco']).default('transcrita'), arquivoConferido: z.literal(true) })
+  .refine(input => input.situacao === 'em_branco' || !!input.transcricao, 'Registre o texto que foi conferido.');
 async function handlePOST(request: Request, context: { params: Promise<{ examId: string; submissionId: string }> }) {
   const { examId, submissionId } = await context.params;
   if (![examId, submissionId].every(id => uuid.safeParse(id).success)) return apiError('Submissão inválida.', 400);
@@ -17,16 +20,16 @@ async function handlePOST(request: Request, context: { params: Promise<{ examId:
     if (prova.status === 'corrigida') return apiError('A prova já foi liberada.', 409);
     if (!submission.aluno_id) return apiError('Confirme o aluno antes de registrar a resposta.', 409);
     if (!prova.barema.questoes.some((q: BaremaQuestao) => q.numero === parsed.data.numero)) return apiError('Questão fora do barema.', 400);
-    const { data: existing, error: existingError } = await db().from('respostas').select('numero').eq('submissao_id', submissionId);
+    const { data: existing, error: existingError } = await db().from('respostas').select('numero,correcao').eq('submissao_id', submissionId);
     if (existingError) throw existingError;
     if (existing?.some(r => r.numero === parsed.data.numero)) return apiError('A questão já tem uma resposta. Revise a resposta existente.', 409);
-    if (existing?.some(r => r.numero < 1)) return apiError('Resolva as pendências de associação desta prova antes de registrar outra resposta.', 409);
+    if (existing?.some(r => r.numero < 1 && !isResolvedReading(r))) return apiError('Resolva as pendências de associação desta prova antes de registrar outra resposta.', 409);
     const { error: feedbackError } = await db().from('feedbacks').delete().eq('submissao_id', submissionId);
     if (feedbackError) throw feedbackError;
     const { data, error } = await db().from('respostas').insert({ prova_id: examId, submissao_id: submissionId, numero: parsed.data.numero,
       nota_final: null, comentario_final: null, grupo_id: null,
-      correcao: { numero: parsed.data.numero, transcricao: parsed.data.transcricao, legivel: true, passos: [], metodo: 'padrao',
-        descricaoMetodo: 'Resposta registrada pelo professor a partir do arquivo original.', tipoErro: 'nenhum', primeiroPassoErrado: null,
+      correcao: { numero: parsed.data.numero, transcricao: parsed.data.situacao === 'em_branco' ? 'Página conferida e visivelmente em branco.' : parsed.data.transcricao, legivel: true, passos: [], metodo: 'padrao',
+        descricaoMetodo: 'Resposta registrada pelo professor a partir do arquivo original.', tipoErro: parsed.data.situacao === 'em_branco' ? 'em_branco' : 'nenhum', primeiroPassoErrado: null,
         criteriosAtendidos: [], notaSugerida: 0, justificativa: '', origem: 'professor' },
     }).select('*').single();
     if (error?.code === '23505') return apiError('A resposta foi registrada em outra revisão. Recarregue.', 409);

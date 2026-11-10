@@ -28,8 +28,12 @@ async function handlePATCH(request: Request, context: { params: Promise<{ examId
     // A devolutiva anterior não pode ser publicada depois de uma mudança na revisão.
     const { error: feedbackError } = await db().from('feedbacks').delete().eq('submissao_id', resposta.submissao_id);
     if (feedbackError) throw feedbackError;
-    const { data, error: uError } = await db().from('respostas').update({ nota_final: nota, comentario_final: comentario }).eq('id', answerId).select('*').single();
+    const correction = !resposta.correcao?.legivel ? { ...resposta.correcao, legivel: true,
+      legibilidadeOriginal: false, leituraConferidaEm: new Date().toISOString() } : resposta.correcao;
+    const { data, error: uError } = await db().from('respostas').update({ nota_final: nota, comentario_final: comentario, correcao: correction })
+      .eq('id', answerId).eq('numero', resposta.numero).eq('correcao', JSON.stringify(resposta.correcao)).select('*').maybeSingle();
     if (uError) throw uError;
+    if (!data) return apiError('A leitura mudou. Recarregue antes de validar.', 409);
     return Response.json({ resposta: data }, { headers: privateHeaders });
   } catch (error) { return serverError(error); }
 }

@@ -6,7 +6,7 @@ import type { CorrecaoQuestao } from '@/lib/ai/schemas';
 import { apiError, findProva, privateHeaders, serverError, uuid } from '@/lib/db/api';
 import { db } from '@/lib/db/server';
 import { findSubmission } from '@/lib/db/submissions';
-import { reviewIssues } from '@/lib/review';
+import { isResolvedReading, reviewIssues } from '@/lib/review';
 import { contentRevision, feedbackReviewed, reviewRevision, validFeedback } from '@/lib/review-revision';
 import { z } from 'zod';
 import { FeedbackAluno } from '@/lib/ai/schemas';
@@ -33,7 +33,7 @@ async function handlePOST(_request: Request, context: { params: Promise<{ examId
       conteudo = await gerarFeedback({
         cliente: ia().withOptions({ timeout: 180_000, maxRetries: 1 }),
         modelo: MODELO, analise: prova.analise, barema: prova.barema,
-        questoes: respostas.map(r => ({ numero: r.numero, correcao: r.correcao as CorrecaoQuestao, notaFinal: Number(r.nota_final), comentarioProfessor: r.comentario_final })),
+        questoes: respostas.filter(r => !isResolvedReading(r)).map(r => ({ numero: r.numero, correcao: r.correcao as CorrecaoQuestao, notaFinal: Number(r.nota_final), comentarioProfessor: r.comentario_final })),
       });
     } catch (e) {
       logFalhaIA('devolutiva', e);

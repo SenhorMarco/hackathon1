@@ -65,3 +65,9 @@ Em 04/11, a falha da média foi corrigida no commit `c93da05`. O carregamento in
 Build, TypeScript, lint e testes de revisão/dashboard passaram; os testes HTTP de permissões também passaram. Os testes de cálculo incluem média 10, zero real, notas ausentes, cobertura parcial, duplicatas, teto por questão e referência local de alunos.
 
 Após a Vercel indicar publicação concluída, a conta de professor recarregou a mesma turma de teste: o cartão e o gráfico passaram a mostrar **10,0**, com **1/1 aluno**, em acordo com o relatório detalhado. Evidência local: `tmp/deploy-qa-2026-11-03/07-dashboard-media-corrigida.jpg`. A inconsistência transitória imediatamente após liberação permanece como investigação separada; não foi repetida nesta validação.
+
+## Correções posteriores — prazos e leituras pendentes
+
+RN05–RN07 foram implementadas e conferidas no deploy em 09/11: [relatório de prazos e exceções](TESTE_PRAZOS_2026-11-09.md).
+
+A lacuna de RN08 foi resolvida em `031f3ed`: desconsideração reversível de leitura duplicada ou externa à prova, preservação do texto/arquivo, associação manual, conferência da leitura e registro de página em branco sem nota automática. Dez verificações reais passaram no deploy em 10/11: [relatório de leituras](TESTE_LEITURAS_2026-11-10.md). As lacunas históricas acima devem ser lidas junto destas atualizações. RN01, RN17, RN19 e atomicidade da publicação continuam em seus cartões.

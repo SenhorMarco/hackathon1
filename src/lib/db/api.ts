@@ -12,7 +12,7 @@ export function apiError(message: string, status: number) {
 
 export function serverError(error: unknown) {
   const code = error && typeof error === 'object' && 'code' in error ? String(error.code) : '';
-  if (['40001', '40P01', '55000'].includes(code)) return apiError('A prova foi publicada ou a revisão mudou durante esta operação. Recarregue antes de tentar novamente.', 409);
+  if (['PT409', '40001', '40P01', '55000'].includes(code)) return apiError('A prova foi publicada ou a revisão mudou durante esta operação. Recarregue antes de tentar novamente.', 409);
   // Nunca devolve detalhes do provedor, caminhos ou credenciais ao navegador.
   console.error('Falha na API de provas:', error instanceof Error ? error.name : 'erro de persistência');
   return apiError('Não foi possível acessar as provas. Confira a configuração do Supabase e tente novamente.', 500);

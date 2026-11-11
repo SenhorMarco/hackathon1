@@ -1,6 +1,6 @@
 # Publicação transacional — 10/11/2026
 
-**Status: implementação e testes locais aprovados; aplicação da migração e teste integrado no deploy pendentes.** Card RN03/RN18: bloquear liberação até completar a validação da prova. A liberação continua sendo da prova inteira, abrangendo todas as submissões confirmadas existentes.
+**Status atualizado em 11/11: implementação e testes locais aprovados; migração inicial aplicada e API publicada. O teste integrado encontrou incompatibilidade no código de conflito; a correção PT409 está validada localmente e precisa ser reaplicada no Supabase antes de concluir o card.** [Resultado integrado e pendência atual](TESTE_PUBLICACAO_DEPLOY_2026-11-11.md). Card RN03/RN18: bloquear liberação até completar a validação da prova. A liberação continua sendo da prova inteira, abrangendo todas as submissões confirmadas existentes.
 
 ## Alteração
 
@@ -33,7 +33,7 @@ Para repetir os testes SQL, instale `embedded-postgres@18.6.0-beta.19` em um dir
 3. Confirmar o deploy bem-sucedido e repetir o fluxo autenticado com uma prova sintética: bloquear liberação incompleta, concluir revisão e aprovação, publicar, repetir a chamada e abrir a devolutiva como aluno. Verificar no banco todas as flags e o status da prova.
 4. Confirmar que tentativas de editar nota, arquivo, barema ou texto depois da publicação recebem conflito e preservam os dados. Atualizar este relatório e o card com o resultado real.
 
-Na conferência desta implementação, a chamada somente de leitura a `snapshot_publicacao` no Supabase retornou **404 / PGRST202**, indicando função ainda indisponível. As variáveis locais possuem credenciais de aplicação, mas não conexão administrativa SQL; o painel do Supabase solicitou login. Não foram alterados dados de produção nem aplicada a migração.
+Na conferência inicial de 10/11, a chamada somente de leitura a `snapshot_publicacao` retornou **404 / PGRST202**. Em 11/11, após aplicação pelo usuário, retornou **200** e a API foi publicada. As variáveis locais permitem acesso de aplicação, mas não execução administrativa SQL; a correção mais recente do mesmo arquivo precisa ser reaplicada pelo SQL Editor.
 
 ## Limites
 

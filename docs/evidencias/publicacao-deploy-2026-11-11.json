@@ -1,0 +1,118 @@
+{
+  "implementation": "fafef6371d2cf4c644a44aeb6c60f974bc069cc9",
+  "status": "aguardando reaplicacao SQL com PT409",
+  "reports": [
+    {
+      "label": "TESTE_LEITURAS_1794437809682",
+      "base": "https://hackathon1-blond.vercel.app",
+      "startedAt": "2026-11-11T22:56:49.684Z",
+      "completedAt": "2026-11-11T22:57:32.989Z",
+      "status": "aprovado",
+      "checks": [
+        {
+          "name": "A rota de leitura nega acesso anônimo e de aluno"
+        },
+        {
+          "name": "Revisão fornece versão da leitura e liberação inicial fica bloqueada"
+        },
+        {
+          "name": "Leitura duplicada fica arquivada sem alterar texto, linha, arquivo ou nota da Q1; repetição não duplica histórico"
+        },
+        {
+          "name": "Versão desatualizada, nova pré-correção e resposta manual durante pendências recebem 409"
+        },
+        {
+          "name": "Conteúdo fora da prova arquivado explicitamente; leitura associada exige conferência e conserva a legibilidade original"
+        },
+        {
+          "name": "Questão com leitura incerta permanece sem nota até o professor conferir o arquivo"
+        },
+        {
+          "name": "Reabrir a leitura restaura bloqueios; texto ausente/ilegível não vira resposta em branco; novo arquivamento fica registrado"
+        },
+        {
+          "name": "Questão Q4 em branco registrada sem nota automática; duplicação bloqueada e nota zero explícita permitida"
+        },
+        {
+          "name": "Correções completas e devolutiva manual revisada permitem a liberação"
+        },
+        {
+          "name": "Aluno vê apenas a devolutiva publicada; texto arquivado fica oculto e a publicação impede reabertura"
+        }
+      ],
+      "aiCalls": 0,
+      "fixturesClosed": true,
+      "fixtureCounts": {
+        "users": 2,
+        "exams": 1,
+        "submissions": null,
+        "files": 1
+      }
+    },
+    {
+      "label": "TESTE_PRAZOS_FINAL_1794437867726",
+      "base": "https://hackathon1-blond.vercel.app",
+      "startedAt": "2026-11-11T22:57:47.727Z",
+      "completedAt": "2026-11-11T22:58:53.912Z",
+      "status": "aprovado",
+      "checks": [
+        {
+          "name": "Upload autorizado antes do prazo e confirmado depois: HTTP 409, arquivo/correção/feedback preservados"
+        },
+        {
+          "name": "Duas contas na mesma turma: exceção só autoriza A; B não reutiliza o ticket de A"
+        },
+        {
+          "name": "Dois primeiros envios HTTP concorrentes: um 201, outro 409, uma única submissão"
+        },
+        {
+          "name": "Substituições RPC concorrentes com a mesma versão anterior: uma aceita e outra rejeitada, sem sobrescrita"
+        },
+        {
+          "name": "Duas edições concorrentes de prazo: revisão desatualizada recebe 409"
+        },
+        {
+          "name": "RPC direta negada à conta de aluno autenticada"
+        }
+      ],
+      "aiCalls": 0,
+      "fixturesClosed": true,
+      "fixtureCounts": {
+        "users": 3,
+        "exams": 3,
+        "submissions": null,
+        "files": 8
+      }
+    },
+    {
+      "label": "TESTE_PUBLICACAO_1794438181004",
+      "base": "https://hackathon1-blond.vercel.app",
+      "startedAt": "2026-11-11T23:03:01.005Z",
+      "completedAt": "2026-11-11T23:05:34.037Z",
+      "status": "falhou",
+      "checks": [
+        {
+          "name": "A API nega publicação anônima, para alunos, e bloqueia submissões sem todas as respostas"
+        },
+        {
+          "name": "Notas são validadas pela API dentro dos tetos e questões pendentes bloqueiam publicação"
+        },
+        {
+          "name": "Publicação bloqueia feedback ausente e espera aprovação de cada aluno"
+        },
+        {
+          "name": "Devolutiva com hash antigo é recusada; após atualizar e aprovar novamente, fica pronta para publicar"
+        }
+      ],
+      "error": "Snapshot antigo é recusado pela comparação transacional.",
+      "aiCalls": 0,
+      "fixturesClosed": true,
+      "fixtureCounts": {
+        "users": 3,
+        "exams": 1,
+        "submissions": 2,
+        "files": null
+      }
+    }
+  ]
+}

@@ -102,7 +102,9 @@ begin
    raise exception 'Prova não encontrada' using errcode='P0002';
  end if;
  if p_snapshot is null or jsonb_typeof(p_snapshot)<>'object' or public.snapshot_publicacao(p_prova) is distinct from p_snapshot then
-   raise exception 'A revisão mudou durante a publicação' using errcode='40001';
+   -- PT409 é um conflito de negócio. Não usar 40001 aqui: versões do
+   -- PostgREST repetem automaticamente serialization_failure sem encerrar.
+   raise exception 'A revisão mudou durante a publicação' using errcode='PT409';
  end if;
  -- A comparação integral acima mantém válidas as verificações semânticas da API.
  select count(*) into v_count from public.submissoes where prova_id=p_prova;

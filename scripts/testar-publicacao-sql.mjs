@@ -122,10 +122,10 @@ try {
   for (const [label, mutate] of staleCases) {
     const f = await fixture(); const snapshot = jsSnapshot(f);
     await mutate(f);
-    await assert.rejects(asService(() => rpc(control, f.proof, teacher, snapshot)), error => error.code === '40001', `snapshot antigo após ${label}`);
+    await assert.rejects(asService(() => rpc(control, f.proof, teacher, snapshot)), error => error.code === 'PT409', `snapshot antigo após ${label}`);
     await assertUnpublished(f.proof);
   }
-  console.log('OK: snapshots antigos após alteração de nota, arquivo, barema, submissão nova ou feedback retornam 40001 sem publicação parcial.');
+  console.log('OK: snapshots antigos após alteração de nota, arquivo, barema, submissão nova ou feedback retornam PT409 sem publicação parcial.');
 
   const rollbackFixture = await fixture();
   await control.query(`create function falhar_depois_de_publicar() returns trigger language plpgsql as $$ begin
@@ -155,7 +155,7 @@ try {
   await second.query('set role service_role');
   let waiting = settle(rpc(second, gradeRace.proof, teacher, gradeSnapshot));
   await waitForLock(secondPid); await first.query('commit');
-  assert.equal((await waiting).error?.code, '40001', 'publicação aguarda nota em curso e depois recusa snapshot antigo');
+  assert.equal((await waiting).error?.code, 'PT409', 'publicação aguarda nota em curso e depois recusa snapshot antigo');
   await second.query('reset role');
   await assertUnpublished(gradeRace.proof);
   console.log('OK: publicação bloqueou por alteração de nota em curso; após commit, snapshot obsoleto recusado sem flags parciais.');

@@ -99,7 +99,7 @@ function db() {
     if (rpcFailureCode) return Promise.resolve({ data: null, error: { code: rpcFailureCode } });
     if (rpcConcurrentMutation) { rpcConcurrentMutation(); rpcConcurrentMutation = null; }
     const liveSnapshot = releaseSnapshot(tables.provas[0], tables.submissoes, tables.respostas, tables.feedbacks);
-    if (!sameJson(liveSnapshot, args.p_snapshot)) return Promise.resolve({ data: null, error: { code: '40001' } });
+    if (!sameJson(liveSnapshot, args.p_snapshot)) return Promise.resolve({ data: null, error: { code: 'PT409' } });
     tables.feedbacks.forEach(row => { if (args.p_snapshot.feedbacks.some(snapshot => snapshot.id === row.id)) row.publicado = true; });
     tables.provas[0].status = 'corrigida';
     return Promise.resolve({ data: { liberadas: args.p_snapshot.submissoes.length }, error: null });
@@ -110,7 +110,7 @@ const mocks = {
   zod: { z }, '@/lib/ai/schemas': { FeedbackAluno: feedbackSchema }, '@/lib/review': helpers,
   '@/lib/db/server': { db },
   '@/lib/db/api': { apiError: (error, status) => Response.json({ error }, { status }), findProva: async () => tables.provas[0], privateHeaders: {}, serverError: error => {
-    if (['40001', '40P01', '55000'].includes(error?.code)) return Response.json({ error: 'A prova mudou; recarregue a revisão.' }, { status: 409 });
+    if (['PT409', '40001', '40P01', '55000'].includes(error?.code)) return Response.json({ error: 'A prova mudou; recarregue a revisão.' }, { status: 409 });
     throw error;
   }, uuid: z.string().uuid() },
   '@/lib/db/submissions': { findSubmission: async (exam, id) => tables.submissoes.find(row => row.prova_id === exam && row.id === id) ?? null },
@@ -185,7 +185,7 @@ reset();
 tables.feedbacks[0].conteudo = approvedContent(tables.submissoes[0], tables.respostas);
 rpcConcurrentMutation = () => { tables.respostas[0].correcao = { ...tables.respostas[0].correcao, notaSugerida: 99 }; };
 const racedPublication = await release(null, context);
-assert.equal(racedPublication.status, 409, 'mudança entre leitura da API e RPC recebe conflito de snapshot');
+assert.equal(racedPublication.status, 409, 'conflito PT409 entre leitura da API e RPC resulta em 409');
 assert.equal(tables.provas[0].status, 'corrigindo', 'conflito não muda status');
 assert.ok(tables.feedbacks.every(row => !row.publicado), 'conflito não publica devolutivas');
 assert.ok(!actionLog.some(action => action.action === 'update' && ['feedbacks', 'provas'].includes(action.table)), 'conflito não usa updates diretos');
